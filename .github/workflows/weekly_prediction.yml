@@ -26,26 +26,29 @@ on:
 permissions:
   contents: write
 
-jobs:
-  predict:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+env:
+  SEASON: ${{ github.event.inputs.season || '2026' }}
+  PYTHON_VERSION: "3.11"
 
-    env:
-      SEASON: ${{ github.event.inputs.season || '2026' }}
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#  Job 1: Fetch race data from FastF1 + scrape fantasy prices
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+jobs:
+  data:
+    name: 📡 Fetch Data
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
-      # ── Checkout ──────────────────────────────────────────────────────────
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      # ── Python ────────────────────────────────────────────────────────────
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: ${{ env.PYTHON_VERSION }}
 
-      # ── Dependency cache ──────────────────────────────────────────────────
       - name: Cache pip dependencies
         uses: actions/cache@v4
         with:
@@ -54,7 +57,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-
 
-      # ── FastF1 cache (large, gitignored — needs actions/cache) ───────────
       - name: Cache FastF1 data
         uses: actions/cache@v4
         with:
@@ -63,61 +65,178 @@ jobs:
           restore-keys: |
             fastf1-cache-${{ env.SEASON }}-
 
-      # ── Install dependencies ─────────────────────────────────────────────
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
       - name: Install Playwright browsers
+        if: github.event_name != 'schedule'
         run: playwright install --with-deps chromium
 
-      # ── Run the full pipeline ────────────────────────────────────────────
-      - name: Run prediction pipeline
+      - name: Fetch latest race data
+        run: python src/data/fetch_fastf1.py --season ${{ env.SEASON }}
+
+      - name: Scrape fantasy prices
+        if: >-
+          github.event_name != 'schedule'
+          && github.event.inputs.skip_scraper != 'true'
         env:
           F1_FANTASY_EMAIL: ${{ secrets.F1_FANTASY_EMAIL }}
           F1_FANTASY_PASSWORD: ${{ secrets.F1_FANTASY_PASSWORD }}
         run: |
-          ARGS="--season ${{ env.SEASON }}"
-
-          # Scheduled runs always skip the scraper (it's broken — issue #1)
-          if [ "${{ github.event_name }}" = "schedule" ]; then
-            echo "::notice::Scheduled run — skipping price scraper (using hardcoded prices)"
-            ARGS="$ARGS --skip-scraper"
-          fi
-
-          # Manual trigger respects the checkbox
-          if [ "${{ github.event.inputs.skip_scraper }}" = "true" ]; then
-            ARGS="$ARGS --skip-scraper"
-          fi
-
-          # If no F1 Fantasy credentials are set, skip the scraper automatically
           if [ -z "$F1_FANTASY_EMAIL" ] || [ -z "$F1_FANTASY_PASSWORD" ]; then
-            echo "::warning::F1 Fantasy credentials not set — skipping price scraper (using hardcoded prices)"
-            ARGS="$ARGS --skip-scraper"
+            echo "::warning::F1 Fantasy credentials not set — skipping price scraper"
+            exit 0
           fi
+          python src/data/scrape_prices.py
 
-          if [ "${{ github.event.inputs.skip_train }}" = "true" ]; then
-            ARGS="$ARGS --skip-train"
-          fi
+      - name: Upload data artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pipeline-data
+          path: data/f1_fantasy.duckdb
+          retention-days: 1
 
-          python src/pipeline.py $ARGS
+      - name: Upload debug screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scraper-debug-screenshots
+          path: data/scraper_debug*.png
+          retention-days: 14
+          if-no-files-found: ignore
 
-      # ── Publish report as GitHub Actions Job Summary ─────────────────────
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  #  Job 2: Engineer features + train LightGBM model
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  train:
+    name: 🧠 Train Model
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: data
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Download data artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: pipeline-data
+          path: .
+
+      - name: Engineer features
+        run: python src/features/engineer.py
+
+      - name: Train model
+        if: github.event.inputs.skip_train != 'true'
+        run: python src/models/train.py
+
+      - name: Upload train artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pipeline-train
+          path: |
+            data/f1_fantasy.duckdb
+            data/processed/features.parquet
+            models/lgbm_predictor.pkl
+          retention-days: 1
+
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  #  Job 3: Generate predictions, optimise team, build report
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  predict:
+    name: 🏎️ Predict & Optimise
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: train
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Cache FastF1 data
+        uses: actions/cache@v4
+        with:
+          path: fastf1_cache
+          key: fastf1-cache-${{ env.SEASON }}-${{ github.run_number }}
+          restore-keys: |
+            fastf1-cache-${{ env.SEASON }}-
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Download train artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: pipeline-train
+          path: .
+
+      - name: Generate predictions
+        run: python src/models/predict.py --season ${{ env.SEASON }}
+
+      - name: Run team optimiser
+        run: python src/optimiser/team_selector.py
+
+      - name: Generate report
+        run: python src/report/generate.py
+
       - name: Write report to Job Summary
         if: always()
         run: |
           if [ -f reports/latest.md ]; then
             cat reports/latest.md >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "---" >> $GITHUB_STEP_SUMMARY
-            echo "_View this report in the **reports/** directory or download the artifact below._" >> $GITHUB_STEP_SUMMARY
           else
             echo "## ⚠️ Report not generated" >> $GITHUB_STEP_SUMMARY
-            echo "The pipeline did not produce a report. Check the logs above for errors." >> $GITHUB_STEP_SUMMARY
+            echo "Check the logs above for errors." >> $GITHUB_STEP_SUMMARY
           fi
 
-      # ── Upload report as downloadable artifact ──────────────────────────
+      - name: Upload predict artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pipeline-predict
+          path: |
+            reports/
+            data/processed/predictions_*.parquet
+            models/lgbm_predictor.pkl
+          retention-days: 1
+
       - name: Upload report artifact
         if: always()
         uses: actions/upload-artifact@v4
@@ -128,19 +247,27 @@ jobs:
             data/processed/predictions_*.parquet
           retention-days: 90
 
-      # ── Upload debug screenshots on failure ──────────────────────────────
-      - name: Upload debug screenshots
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: scraper-debug-screenshots
-          path: data/scraper_debug*.png
-          retention-days: 14
-          if-no-files-found: ignore
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  #  Job 4: Commit report + updated data back to repo
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-      # ── Commit report back to repo ───────────────────────────────────────
+  publish:
+    name: 📤 Publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: predict
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Download predict artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: pipeline-predict
+          path: .
+
       - name: Commit and push report
-        if: success()
         run: |
           git config --global user.name "f1-fantasy-bot"
           git config --global user.email "bot@f1fantasy"
