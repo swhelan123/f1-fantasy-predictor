@@ -4,7 +4,7 @@ An automated ML pipeline that predicts the optimal F1 Fantasy team each race wee
 
 ## How it works
 
-1. **Data** — Pulls race, qualifying, and pit stop data via FastF1 + scrapes live fantasy prices
+1. **Data** — Pulls race, qualifying, and pit stop data via FastF1 + fetches live fantasy prices from the official F1 Fantasy API
 2. **Features** — Engineers rolling form, circuit-specific stats, PPM trends, pit stop consistency
 3. **Model** — LightGBM regression predicts fantasy points per driver/constructor
 4. **Optimiser** — PuLP solves the constrained $100M knapsack to pick the best team
@@ -35,9 +35,9 @@ cd f1-fantasy-predictor
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-playwright install chromium
-cp .env.example .env  # Add your F1 Fantasy credentials
 ```
+
+> **Note:** Playwright is no longer required for price fetching. Prices are now pulled from the official F1 Fantasy JSON feed (`fantasy.formula1.com/feeds/drivers/1_en.json`) — no login or browser automation needed. Playwright is kept as an optional fallback only.
 
 ## Running locally
 
@@ -66,8 +66,10 @@ python src/pipeline.py --skip-scraper --skip-train
 # 1. Fetch race data
 python src/data/fetch_fastf1.py --season 2026 --races 3
 
-# 2. Scrape fantasy prices (requires F1 Fantasy credentials in .env)
-python src/data/scrape_prices.py
+# 2. Fetch fantasy prices (no credentials required)
+python src/data/scrape_prices.py                # default: official API feed
+python src/data/scrape_prices.py --source api   # explicit: official API feed
+python src/data/scrape_prices.py --source auto  # try API, fall back to Playwright
 
 # 3. Engineer features
 python src/features/engineer.py
@@ -101,14 +103,14 @@ The pipeline runs automatically **twice per race week** via GitHub Actions — T
 3. Optionally adjust the season, or toggle skip flags
 4. Click **Run workflow** to start
 
-### Required GitHub Secrets
+### GitHub Secrets (optional)
 
-| Secret                | Purpose                                             |
-| --------------------- | --------------------------------------------------- |
-| `F1_FANTASY_EMAIL`    | Your F1 Fantasy login email (for price scraping)    |
-| `F1_FANTASY_PASSWORD` | Your F1 Fantasy login password (for price scraping) |
+| Secret                | Purpose                                                         |
+| --------------------- | --------------------------------------------------------------- |
+| `F1_FANTASY_EMAIL`    | F1 Fantasy login email (only for legacy Playwright fallback)    |
+| `F1_FANTASY_PASSWORD` | F1 Fantasy login password (only for legacy Playwright fallback) |
 
-> **Note:** If these secrets are not set, the pipeline will automatically skip the price scraper and fall back to hardcoded launch prices. The rest of the pipeline still works.
+> **Note:** These secrets are **no longer required**. Prices are fetched from the official F1 Fantasy JSON feed, which needs no authentication. The secrets are only used if you explicitly switch to `--source playwright`.
 
 ### What the workflow does
 
@@ -147,7 +149,7 @@ f1-fantasy-predictor/
 │   ├── data/
 │   │   ├── fetch_fastf1.py    # FastF1 race data fetcher
 │   │   ├── fetch_testing.py   # Pre-season testing data
-│   │   └── scrape_prices.py   # Playwright price scraper
+│   │   └── scrape_prices.py   # F1 Fantasy API price fetcher (Playwright fallback)
 │   ├── features/
 │   │   └── engineer.py        # Feature engineering (2026 scoring)
 │   ├── models/
@@ -185,7 +187,7 @@ Each race week a new report is auto-committed to `/reports/` with:
 
 | Component    | Technology                             |
 | ------------ | -------------------------------------- |
-| Data         | FastF1, Playwright, DuckDB, Pandas     |
+| Data         | FastF1, F1 Fantasy API, DuckDB, Pandas |
 | ML           | LightGBM, scikit-learn, Optuna, SHAP   |
 | Optimisation | PuLP (CBC solver)                      |
 | Weather      | Open-Meteo API (free, no key required) |

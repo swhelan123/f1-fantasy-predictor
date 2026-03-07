@@ -70,42 +70,21 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Install Playwright browsers
-        if: github.event_name != 'schedule'
-        run: playwright install --with-deps chromium
-
       - name: Fetch latest race data
         run: python src/data/fetch_fastf1.py --season ${{ env.SEASON }}
 
-      - name: Scrape fantasy prices
-        if: >-
-          github.event_name != 'schedule'
-          && github.event.inputs.skip_scraper != 'true'
-        env:
-          F1_FANTASY_EMAIL: ${{ secrets.F1_FANTASY_EMAIL }}
-          F1_FANTASY_PASSWORD: ${{ secrets.F1_FANTASY_PASSWORD }}
-        run: |
-          if [ -z "$F1_FANTASY_EMAIL" ] || [ -z "$F1_FANTASY_PASSWORD" ]; then
-            echo "::warning::F1 Fantasy credentials not set — skipping price scraper"
-            exit 0
-          fi
-          python src/data/scrape_prices.py
+      - name: Fetch fantasy prices
+        if: github.event.inputs.skip_scraper != 'true'
+        run: python src/data/scrape_prices.py --source api
 
       - name: Upload data artifact
         uses: actions/upload-artifact@v4
         with:
           name: pipeline-data
-          path: data/f1_fantasy.duckdb
+          path: |
+            data/f1_fantasy.duckdb
+            data/processed/player_prices.parquet
           retention-days: 1
-
-      - name: Upload debug screenshots
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: scraper-debug-screenshots
-          path: data/scraper_debug*.png
-          retention-days: 14
-          if-no-files-found: ignore
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   #  Job 2: Engineer features + train LightGBM model

@@ -72,11 +72,12 @@ def step_fetch_data(season: int, races: int):
 def step_scrape_prices():
     from src.data.scrape_prices import run as scrape_run
 
-    result = scrape_run(headless=True)
+    result = scrape_run(headless=True, source="auto")
     if result is None:
         raise RuntimeError(
-            "Price scraper returned no data. "
-            "Check F1_FANTASY_EMAIL / F1_FANTASY_PASSWORD env vars."
+            "Price fetch returned no data. "
+            "The official F1 Fantasy API feed may be unavailable. "
+            "Try --skip-scraper to use cached/hardcoded prices."
         )
 
 
