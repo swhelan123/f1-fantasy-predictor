@@ -8,6 +8,7 @@ Generates a Markdown report summarising the weekly F1 Fantasy prediction:
   - Optimal team selection (drivers, constructors, turbo pick)
   - Budget breakdown & PPM analysis
   - DRS boost / turbo recommendation rationale
+  - Testing adjustment transparency (regulation-change early season)
 
 The report is saved to /reports/ with a date-stamped filename and also
 written to /reports/latest.md for easy access.
@@ -168,6 +169,66 @@ def _weather_section(meta: dict) -> str:
             )
     else:
         lines.append("_Weather forecast unavailable — using historical averages._\n")
+
+    return "\n".join(lines)
+
+
+def _testing_adjustment_section(drivers: pd.DataFrame) -> str:
+    """
+    Show how the testing-based adjustment affected predictions.
+    Only rendered when TestWeight column is present (reg-change early season).
+    """
+    if "TestWeight" not in drivers.columns or drivers["TestWeight"].isna().all():
+        return ""
+
+    test_weight = float(drivers["TestWeight"].iloc[0])
+    model_weight = 1.0 - test_weight
+
+    lines = []
+    lines.append("## 🧪 Pre-Season Testing Adjustment\n")
+    lines.append(
+        "> **Regulation-change season detected.** Prior-season rolling form is "
+        "unreliable with brand-new cars, so predictions are blended with "
+        "pre-season testing performance.\n"
+    )
+    lines.append(
+        f"| Blend | Weight |\n"
+        f"|-------|-------:|\n"
+        f"| 🧪 Testing signal | **{test_weight:.0%}** |\n"
+        f"| 🤖 Model (historical form) | **{model_weight:.0%}** |\n"
+    )
+
+    # Show the breakdown per driver
+    has_model = "ModelPts" in drivers.columns and "TestExpectedPts" in drivers.columns
+    if has_model:
+        display = (
+            drivers.sort_values("PredictedPts", ascending=False)
+            .head(22)
+            .reset_index(drop=True)
+        )
+        lines.append(
+            "| Driver | Constructor | Model Pts | Testing Pts | Blended Pts | Δ from Model |"
+        )
+        lines.append(
+            "|--------|-------------|----------:|------------:|------------:|-------------:|"
+        )
+        for _, row in display.iterrows():
+            driver = row.get("Driver", "?")
+            ctor = row.get("Constructor", "?")
+            m_pts = round(float(row.get("ModelPts", 0)), 1)
+            t_pts = round(float(row.get("TestExpectedPts", 0)), 1)
+            b_pts = round(float(row["PredictedPts"]), 1)
+            delta = round(b_pts - m_pts, 1)
+            arrow = "📈" if delta > 1 else ("📉" if delta < -1 else "➡️")
+            lines.append(
+                f"| {driver} | {ctor} | {m_pts} | {t_pts} | **{b_pts}** | {arrow} {delta:+.1f} |"
+            )
+        lines.append("")
+
+    lines.append(
+        "_This adjustment is strongest at Round 1 and fades to zero by Round 6 "
+        "as real race data accumulates._\n"
+    )
 
     return "\n".join(lines)
 
@@ -432,6 +493,11 @@ def build_report(
 
     # Turbo rationale
     sections.append(_turbo_rationale_section(drivers, result.get("turbo")))
+
+    # Testing adjustment transparency (if active)
+    testing_section = _testing_adjustment_section(drivers)
+    if testing_section:
+        sections.append(testing_section)
 
     # Full predictions
     sections.append(_driver_predictions_section(drivers))

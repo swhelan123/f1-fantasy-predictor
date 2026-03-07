@@ -8,6 +8,9 @@ How it works:
   - Identifies the next upcoming race from the F1 schedule
   - Builds a feature row for each driver using their most recent rolling stats
   - Runs predictions through the saved model
+  - Applies a testing-based adjustment for early rounds of regulation-change
+    seasons (testing data is far more predictive than stale rolling form when
+    the cars are brand new)
   - Outputs a ranked prediction table ready for the optimiser
 
 Usage:
@@ -62,6 +65,48 @@ log = logging.getLogger(__name__)
 
 # ── Circuit Coordinates ───────────────────────────────────────────────────────
 # Lat/long for each F1 circuit location name (as returned by FastF1)
+
+# ── Regulation-Change Seasons ─────────────────────────────────────────────────
+# In these seasons the cars are fundamentally new, so prior-season rolling form
+# is largely meaningless and pre-season testing is the best early signal.
+REGULATION_CHANGE_SEASONS = {2014, 2017, 2022, 2026}
+
+# How many rounds the testing adjustment stays active.  At round 1 the blend
+# weight is at its peak; it linearly decays to zero by TESTING_FADE_ROUNDS + 1.
+TESTING_FADE_ROUNDS = 5  # active for R1-R5, gone by R6
+TESTING_PEAK_WEIGHT = 0.70  # at R1, 70 % testing / 30 % model
+ROLLING_DECAY_FACTOR = (
+    0.25  # in a reg-change R1 we shrink rolling features to 25 % of their value
+)
+
+# Reference points distribution for mapping test rank → expected fantasy pts.
+# Built from historical median fantasy-pts per finishing position (approx).
+# Index 0 = rank 1 (fastest in testing), index 21 = rank 22 (slowest).
+_REF_PTS = [
+    30,
+    26,
+    22,
+    19,
+    16,
+    14,
+    12,
+    10,
+    8,
+    7,
+    6,
+    5,
+    4,
+    3,
+    2,
+    1,
+    0,
+    -2,
+    -4,
+    -7,
+    -12,
+    -18,
+]
+
 
 CIRCUIT_COORDS = {
     "Melbourne": (-37.8497, 144.9680),
@@ -271,6 +316,11 @@ def build_prediction_features(
     # Filter to active 2026 drivers only — drop ghosts from old seasons
     latest = latest[latest["Driver"].isin(active_drivers)]
 
+    # Override constructor with the authoritative 2026 mapping — historical
+    # data carries stale teams (e.g. BOT→Kick Sauber, PER→Red Bull Racing)
+    # which are wrong after off-season moves.
+    latest["Constructor"] = latest["Driver"].map(DRIVER_CONSTRUCTOR_2026)
+
     # For new drivers with no history, create a blank row with NaN features
     drivers_with_history = set(latest["Driver"])
     missing = active_drivers - drivers_with_history
@@ -290,6 +340,43 @@ def build_prediction_features(
         latest = pd.concat([latest, pd.DataFrame(blank_rows)], ignore_index=True)
 
     log.info("Building features for %d active 2026 drivers", len(latest))
+
+    # ── Regulation-change rolling-feature decay ───────────────────────────
+    # When we're in a reg-change season and still in the early rounds, the
+    # rolling stats come from last season's (now-obsolete) cars.  Decay them
+    # toward the grid median so they don't mislead the model.
+    is_reg_change = race["Season"] in REGULATION_CHANGE_SEASONS
+    rnd = race["Round"]
+    if is_reg_change and rnd <= TESTING_FADE_ROUNDS:
+        # decay_frac goes from ROLLING_DECAY_FACTOR at R1 → 1.0 at TESTING_FADE_ROUNDS+1
+        decay_frac = ROLLING_DECAY_FACTOR + (1.0 - ROLLING_DECAY_FACTOR) * (
+            (rnd - 1) / TESTING_FADE_ROUNDS
+        )
+        rolling_cols = [
+            "RollingAvgFinish",
+            "RollingAvgFantasyPts",
+            "RollingDNFRate",
+            "RollingAvgPositionsGained",
+            "RollingAvgQualiPos",
+            "RollingPPM_Proxy",
+            "CircuitAvgFinish",
+            "CircuitDNFRate",
+            "CircuitAvgFantasyPts",
+            "QualiVsTeammate",
+            "RaceVsTeammate",
+            "AvgTeammateFantasyPts",
+        ]
+        log.info(
+            "Reg-change season %d R%d — decaying rolling features (factor=%.2f)",
+            race["Season"],
+            rnd,
+            decay_frac,
+        )
+        for col in rolling_cols:
+            if col in latest.columns:
+                median_val = latest[col].median()
+                latest[col] = median_val + (latest[col] - median_val) * decay_frac
+    # ─────────────────────────────────────────────────────────────────────
 
     rows = []
     for _, driver_row in latest.iterrows():
@@ -405,24 +492,86 @@ def build_prediction_features(
             df[col] = np.nan
 
     # Re-encode categoricals to match training encoding
+    # Renamed / new constructors need aliases so they inherit their
+    # predecessor's encoding instead of falling to -1 (unknown).
+    _CONSTRUCTOR_ENC_ALIASES = {
+        "Audi": "Kick Sauber",  # Kick Sauber rebranded to Audi for 2026
+        "Cadillac": "Kick Sauber",  # brand-new team, closest proxy is another backmarker
+        "Racing Bulls": "RB",  # RB rebranded to Racing Bulls mid-cycle
+    }
+
     history_enc = history.copy()
     for col in ["Driver", "Constructor", "Location"]:
         cat = history_enc[col].astype("category")
-        df[col + "_enc"] = (
-            df[col]
-            .map(dict(zip(cat.cat.categories, range(len(cat.cat.categories)))))
-            .fillna(-1)
-            .astype(int)
-        )
+        enc_map = dict(zip(cat.cat.categories, range(len(cat.cat.categories))))
 
-    # Normalise constructor names for 2026
-    df["Constructor"] = df["Constructor"].replace({"Kick Sauber": "Audi"})
+        if col == "Constructor":
+            # Add aliases so renamed teams resolve to a known code
+            for alias, original in _CONSTRUCTOR_ENC_ALIASES.items():
+                if alias not in enc_map and original in enc_map:
+                    enc_map[alias] = enc_map[original]
+
+        df[col + "_enc"] = df[col].map(enc_map).fillna(-1).astype(int)
 
     log.info("Built %d driver prediction rows", len(df))
     return df
 
 
 # ── Run Predictions ───────────────────────────────────────────────────────────
+
+
+# ── Testing-Based Expected Points ────────────────────────────────────────────
+
+
+def _testing_expected_pts(pred_df: pd.DataFrame) -> pd.Series:
+    """
+    Compute an 'expected fantasy points' estimate for each driver based
+    purely on their pre-season testing performance.
+
+    Uses a composite rank (fastest-lap rank + long-run rank + reliability
+    rank) to place drivers on a reference-points curve that approximates
+    the historical fantasy-points distribution by finishing order.
+
+    Returns a Series aligned to pred_df.index.
+    """
+    n_drivers = len(pred_df)
+    ref = (
+        _REF_PTS[:n_drivers]
+        if n_drivers <= len(_REF_PTS)
+        else _REF_PTS + [_REF_PTS[-1]] * (n_drivers - len(_REF_PTS))
+    )
+
+    # Build composite testing rank — lower is better
+    # Weight: 40 % fastest-lap rank, 40 % long-run rank, 20 % total-laps rank
+    composite = pd.Series(np.nan, index=pred_df.index)
+
+    has_test = pred_df["TestFastestLapRank"].notna()
+    if has_test.sum() == 0:
+        # No testing data at all — return zeros (no adjustment possible)
+        return pd.Series(0.0, index=pred_df.index)
+
+    fl_rank = pred_df.loc[has_test, "TestFastestLapRank"]
+    lr_rank = pred_df.loc[has_test, "TestLongRunRank"]
+    laps = pred_df.loc[has_test, "TestTotalLaps"]
+
+    # Rank total laps (more = better reliability / readiness) — ascending=False
+    laps_rank = laps.rank(ascending=False)
+
+    composite.loc[has_test] = 0.40 * fl_rank + 0.40 * lr_rank + 0.20 * laps_rank
+
+    # Drivers with no testing data get worst composite rank
+    composite = composite.fillna(composite.max() + 1)
+
+    # Convert composite rank → ordinal position (1 = best)
+    ordinal = composite.rank(method="min").astype(int)
+
+    # Map ordinal → reference points
+    expected = ordinal.map(lambda r: ref[min(r - 1, len(ref) - 1)])
+
+    return expected.astype(float)
+
+
+# ── Predict ───────────────────────────────────────────────────────────────────
 
 
 def predict(
@@ -433,6 +582,10 @@ def predict(
     """
     Run the model on the prediction feature rows.
     Returns pred_df with PredictedPts and PredictedRank columns added.
+
+    In regulation-change seasons (early rounds), the raw model output is
+    blended with a testing-based expected-points estimate so that testing
+    performance dominates when we have no current-season race data.
     """
     available = [f for f in feature_cols if f in pred_df.columns]
     X = pred_df[available].copy()
@@ -445,7 +598,42 @@ def predict(
             X[col] = X[col].fillna(fill_val)
 
     pred_df = pred_df.copy()
-    pred_df["PredictedPts"] = model.predict(X)
+    model_pts = model.predict(X)
+
+    # ── Testing adjustment for regulation-change early season ─────────
+    season = int(pred_df["Season"].iloc[0])
+    rnd = int(pred_df["Round"].iloc[0])
+    is_reg_change = season in REGULATION_CHANGE_SEASONS
+
+    if is_reg_change and rnd <= TESTING_FADE_ROUNDS:
+        # Blend weight: peak at R1, linearly decays to 0 at TESTING_FADE_ROUNDS + 1
+        test_weight = TESTING_PEAK_WEIGHT * (1.0 - (rnd - 1) / TESTING_FADE_ROUNDS)
+        model_weight = 1.0 - test_weight
+
+        test_pts = _testing_expected_pts(pred_df)
+
+        blended = model_weight * model_pts + test_weight * test_pts.values
+
+        log.info(
+            "Reg-change testing adjustment R%d: test_weight=%.0f%% model_weight=%.0f%%",
+            rnd,
+            test_weight * 100,
+            model_weight * 100,
+        )
+        # Log biggest movers for transparency
+        delta = blended - model_pts
+        top_up = pred_df["Driver"].iloc[delta.argsort()[-3:][::-1]].tolist()
+        top_down = pred_df["Driver"].iloc[delta.argsort()[:3]].tolist()
+        log.info("  Biggest risers  from testing: %s", top_up)
+        log.info("  Biggest fallers from testing: %s", top_down)
+
+        pred_df["ModelPts"] = model_pts
+        pred_df["TestExpectedPts"] = test_pts.values
+        pred_df["TestWeight"] = test_weight
+        pred_df["PredictedPts"] = blended
+    else:
+        pred_df["PredictedPts"] = model_pts
+
     pred_df["PredictedRank"] = pred_df["PredictedPts"].rank(ascending=False).astype(int)
 
     return pred_df.sort_values("PredictedPts", ascending=False).reset_index(drop=True)

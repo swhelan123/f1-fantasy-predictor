@@ -172,9 +172,6 @@ def enrich_with_prices(
     dp = driver_prices or DRIVER_PRICES_2026
     cp = ctor_prices or CONSTRUCTOR_PRICES_2026
 
-    # Normalise constructor names (Kick Sauber → Audi for 2026)
-    drivers["Constructor"] = drivers["Constructor"].replace({"Kick Sauber": "Audi"})
-
     # Filter to known 2026 drivers only (removes ghost drivers from old seasons)
     drivers = drivers[drivers["Driver"].isin(dp)].copy()
     ctors = ctors[ctors["Constructor"].isin(cp)].copy()
