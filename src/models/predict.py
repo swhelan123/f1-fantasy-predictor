@@ -461,7 +461,10 @@ def aggregate_constructors(pred_df: pd.DataFrame) -> pd.DataFrame:
     """
     ctor = (
         pred_df.groupby("Constructor")
-        .apply(lambda g: g.nlargest(2, "PredictedPts")["PredictedPts"].sum())
+        .apply(
+            lambda g: g.nlargest(2, "PredictedPts")["PredictedPts"].sum(),
+            include_groups=False,
+        )
         .reset_index()
         .rename(columns={0: "PredictedPts"})
         .sort_values("PredictedPts", ascending=False)
