@@ -194,40 +194,67 @@ def aggregate_testing(all_sessions: list[pd.DataFrame]) -> pd.DataFrame:
 
 def save_to_db(df: pd.DataFrame):
     con = duckdb.connect(str(DB_PATH))
-    con.execute("DROP TABLE IF EXISTS testing_results")
-    con.execute("CREATE TABLE testing_results AS SELECT * FROM df")
+    # Create table if not exists, then upsert by Season+Driver
+    con.execute("""
+        CREATE TABLE IF NOT EXISTS testing_results AS
+        SELECT * FROM df WHERE 1=0
+    """)
+    # Delete existing rows for these seasons then reinsert
+    seasons = df["Season"].unique().tolist()
+    for s in seasons:
+        con.execute("DELETE FROM testing_results WHERE Season = ?", [int(s)])
+    con.execute("INSERT INTO testing_results SELECT * FROM df")
     count = con.execute("SELECT COUNT(*) FROM testing_results").fetchone()[0]
-    log.info("testing_results: %d rows saved to DB", count)
+    log.info("testing_results: %d total rows in DB", count)
     con.close()
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 
-def run(season: int = 2026, test_number: int = 1, num_days: int = 3):
-    log.info("━━━ F1 Testing Data Fetcher (Season %d) ━━━", season)
+def run(seasons: list[int] | None = None, test_number: int = 1, num_days: int = 3):
+    if seasons is None:
+        seasons = [2026]
 
-    all_sessions = []
-    for day in range(1, num_days + 1):
-        df = fetch_test_session(season, test_number, day)
-        if df is not None and not df.empty:
-            all_sessions.append(df)
+    log.info("━━━ F1 Testing Data Fetcher — seasons %s ━━━", seasons)
 
-    if not all_sessions:
-        log.warning("No testing data found for %d — skipping", season)
+    all_agg = []
+    for season in seasons:
+        log.info("── Season %d ──", season)
+        season_sessions = []
+        for day in range(1, num_days + 1):
+            df = fetch_test_session(season, test_number, day)
+            if df is not None and not df.empty:
+                season_sessions.append(df)
+
+        if not season_sessions:
+            log.warning("No testing data found for %d — skipping", season)
+            continue
+
+        agg = aggregate_testing(season_sessions)
+        all_agg.append(agg)
+
+    if not all_agg:
+        log.warning("No testing data found for any season")
         return None
 
-    agg = aggregate_testing(all_sessions)
-    save_to_db(agg)
+    combined = pd.concat(all_agg, ignore_index=True)
+    save_to_db(combined)
 
-    log.info("━━━ Done ━━━")
-    return agg
+    log.info("━━━ Done — %d total driver-season rows ━━━", len(combined))
+    return combined
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--season", type=int, default=2026)
+    parser.add_argument(
+        "--seasons",
+        nargs="+",
+        type=int,
+        default=[2026],
+        help="Seasons to fetch e.g. 2024 2025 2026",
+    )
     parser.add_argument("--test", type=int, default=1, help="Test event number")
     parser.add_argument("--days", type=int, default=3, help="Number of test days")
     args = parser.parse_args()
-    run(season=args.season, test_number=args.test, num_days=args.days)
+    run(seasons=args.seasons, test_number=args.test, num_days=args.days)

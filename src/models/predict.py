@@ -20,6 +20,7 @@ import logging
 import pickle
 from pathlib import Path
 
+import duckdb
 import fastf1
 import numpy as np
 import pandas as pd
@@ -27,6 +28,7 @@ import pandas as pd
 # ── Paths ─────────────────────────────────────────────────────────────────────
 
 ROOT = Path(__file__).resolve().parents[2]
+DB_PATH = ROOT / "data" / "f1_fantasy.duckdb"
 MODEL_PATH = ROOT / "models" / "lgbm_predictor.pkl"
 PARQUET = ROOT / "data" / "processed" / "features.parquet"
 CACHE_DIR = ROOT / "fastf1_cache"
@@ -189,6 +191,35 @@ def build_prediction_features(
         rows.append(row)
 
     df = pd.DataFrame(rows)
+
+    # Join pre-season testing features
+    try:
+        con = duckdb.connect(str(DB_PATH))
+        testing = con.execute("SELECT * FROM testing_results").df()
+        con.close()
+        testing_cols = [
+            "Season",
+            "Driver",
+            "TestFastestLap",
+            "TestLongRunPace",
+            "TestTotalLaps",
+            "TestFastestLapRank",
+            "TestLongRunRank",
+        ]
+        testing = testing[testing_cols]
+        df = df.merge(testing, on=["Season", "Driver"], how="left")
+        matched = df["TestFastestLap"].notna().sum()
+        log.info("Testing features joined: %d/%d drivers matched", matched, len(df))
+    except Exception as e:
+        log.warning("Could not join testing features: %s", e)
+        for col in [
+            "TestFastestLap",
+            "TestLongRunPace",
+            "TestTotalLaps",
+            "TestFastestLapRank",
+            "TestLongRunRank",
+        ]:
+            df[col] = np.nan
 
     # Re-encode categoricals to match training encoding
     history_enc = history.copy()
