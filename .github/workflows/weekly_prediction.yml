@@ -2,62 +2,150 @@ name: Weekly F1 Fantasy Prediction
 
 on:
   schedule:
-    # Runs every Thursday at 08:00 UTC (adjust to before your race deadline)
-    - cron: '0 8 * * 4'
-  workflow_dispatch: # Allow manual trigger too
+    # Every Thursday at 08:00 UTC — before the typical race weekend deadline
+    - cron: "0 8 * * 4"
+    # Every Sunday at 06:00 UTC — after qualifying, before race deadline
+    - cron: "0 6 * * 0"
+  workflow_dispatch:
+    inputs:
+      season:
+        description: "F1 season year"
+        required: false
+        default: "2026"
+      skip_scraper:
+        description: "Skip price scraper (use hardcoded prices)"
+        required: false
+        type: boolean
+        default: false
+      skip_train:
+        description: "Skip model training (reuse existing model)"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
 
 jobs:
   predict:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      SEASON: ${{ github.event.inputs.season || '2026' }}
 
     steps:
+      # ── Checkout ──────────────────────────────────────────────────────────
       - name: Checkout repo
         uses: actions/checkout@v4
 
+      # ── Python ────────────────────────────────────────────────────────────
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
+      # ── Dependency cache ──────────────────────────────────────────────────
       - name: Cache pip dependencies
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
 
-      - name: Install dependencies
+      # ── FastF1 cache (large, gitignored — needs actions/cache) ───────────
+      - name: Cache FastF1 data
+        uses: actions/cache@v4
+        with:
+          path: fastf1_cache
+          key: fastf1-cache-${{ env.SEASON }}-${{ github.run_number }}
+          restore-keys: |
+            fastf1-cache-${{ env.SEASON }}-
+
+      # ── Install dependencies ─────────────────────────────────────────────
+      - name: Install Python dependencies
         run: |
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
-          playwright install chromium
 
-      - name: Fetch latest race data
-        run: python src/data/fetch_fastf1.py
+      - name: Install Playwright browsers
+        run: playwright install --with-deps chromium
 
-      - name: Scrape fantasy prices
-        run: python src/data/scrape_prices.py
+      # ── Run the full pipeline ────────────────────────────────────────────
+      - name: Run prediction pipeline
         env:
           F1_FANTASY_EMAIL: ${{ secrets.F1_FANTASY_EMAIL }}
           F1_FANTASY_PASSWORD: ${{ secrets.F1_FANTASY_PASSWORD }}
+        run: |
+          ARGS="--season ${{ env.SEASON }}"
 
-      - name: Engineer features
-        run: python src/features/engineer.py
+          # Scheduled runs always skip the scraper (it's broken — issue #1)
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "::notice::Scheduled run — skipping price scraper (using hardcoded prices)"
+            ARGS="$ARGS --skip-scraper"
+          fi
 
-      - name: Train / update model
-        run: python src/models/train.py
+          # Manual trigger respects the checkbox
+          if [ "${{ github.event.inputs.skip_scraper }}" = "true" ]; then
+            ARGS="$ARGS --skip-scraper"
+          fi
 
-      - name: Generate predictions
-        run: python src/models/predict.py
+          # If no F1 Fantasy credentials are set, skip the scraper automatically
+          if [ -z "$F1_FANTASY_EMAIL" ] || [ -z "$F1_FANTASY_PASSWORD" ]; then
+            echo "::warning::F1 Fantasy credentials not set — skipping price scraper (using hardcoded prices)"
+            ARGS="$ARGS --skip-scraper"
+          fi
 
-      - name: Run team optimiser
-        run: python src/optimiser/team_selector.py
+          if [ "${{ github.event.inputs.skip_train }}" = "true" ]; then
+            ARGS="$ARGS --skip-train"
+          fi
 
-      - name: Generate report
-        run: python src/report/generate.py
+          python src/pipeline.py $ARGS
 
-      - name: Commit report to repo
+      # ── Publish report as GitHub Actions Job Summary ─────────────────────
+      - name: Write report to Job Summary
+        if: always()
+        run: |
+          if [ -f reports/latest.md ]; then
+            cat reports/latest.md >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "---" >> $GITHUB_STEP_SUMMARY
+            echo "_View this report in the **reports/** directory or download the artifact below._" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## ⚠️ Report not generated" >> $GITHUB_STEP_SUMMARY
+            echo "The pipeline did not produce a report. Check the logs above for errors." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      # ── Upload report as downloadable artifact ──────────────────────────
+      - name: Upload report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: f1-fantasy-report-${{ env.SEASON }}
+          path: |
+            reports/*.md
+            data/processed/predictions_*.parquet
+          retention-days: 90
+
+      # ── Upload debug screenshots on failure ──────────────────────────────
+      - name: Upload debug screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scraper-debug-screenshots
+          path: data/scraper_debug*.png
+          retention-days: 14
+          if-no-files-found: ignore
+
+      # ── Commit report back to repo ───────────────────────────────────────
+      - name: Commit and push report
+        if: success()
         run: |
           git config --global user.name "f1-fantasy-bot"
           git config --global user.email "bot@f1fantasy"
-          git add reports/
-          git diff --staged --quiet || git commit -m "🏎️ Auto: Race week prediction $(date +'%Y-%m-%d')"
+          git add reports/ data/processed/ models/lgbm_predictor.pkl
+          git diff --staged --quiet && echo "No changes to commit" && exit 0
+          RACE_NAME=$(head -1 reports/latest.md | sed 's/# 🏎️ F1 Fantasy Prediction — //' | sed 's/ 🌧️//')
+          git commit -m "🏎️ Auto: ${RACE_NAME} — $(date +'%Y-%m-%d')"
           git push

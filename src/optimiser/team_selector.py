@@ -123,13 +123,31 @@ DRIVER_CONSTRUCTOR_2026 = {
 # ── Load Predictions ──────────────────────────────────────────────────────────
 
 
-def load_predictions() -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Load latest driver and constructor prediction parquets."""
-    driver_path = PROCESSED / "predictions_drivers_latest.parquet"
-    ctor_path = PROCESSED / "predictions_constructors_latest.parquet"
+def load_predictions(
+    season: int | None = None,
+    round_number: int | None = None,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Load driver and constructor prediction parquets.
+
+    If *season* and *round_number* are given, load the round-specific files.
+    Otherwise fall back to the ``_latest`` files.
+    """
+    if season is not None and round_number is not None:
+        driver_path = (
+            PROCESSED / f"predictions_drivers_S{season}_R{round_number:02d}.parquet"
+        )
+        ctor_path = (
+            PROCESSED
+            / f"predictions_constructors_S{season}_R{round_number:02d}.parquet"
+        )
+    else:
+        driver_path = PROCESSED / "predictions_drivers_latest.parquet"
+        ctor_path = PROCESSED / "predictions_constructors_latest.parquet"
 
     if not driver_path.exists():
-        raise FileNotFoundError("No predictions found. Run predict.py first.")
+        raise FileNotFoundError(
+            f"No predictions found at {driver_path}. Run predict.py first."
+        )
 
     drivers = pd.read_parquet(driver_path)
     ctors = pd.read_parquet(ctor_path)
@@ -258,8 +276,8 @@ def optimise_team(
         )
         total_changes = n_driver_changes + n_ctor_changes
         excess_transfers = total_changes - free_transfers
-        # Penalise excess transfers at 4 pts each
-        transfer_penalty = 4 * excess_transfers
+        # Penalise excess transfers at 10 pts each (2026 rules)
+        transfer_penalty = 10 * excess_transfers
 
     prob += (
         lpSum(pts[drv] * d[drv] for drv in driver_list)
@@ -418,10 +436,12 @@ def run(
     free_transfers: int = 3,
     exclude_drivers: list[str] | None = None,
     exclude_ctors: list[str] | None = None,
+    season: int | None = None,
+    round_number: int | None = None,
 ) -> dict:
     log.info("━━━ F1 Fantasy Team Selector ━━━")
 
-    drivers, ctors = load_predictions()
+    drivers, ctors = load_predictions(season=season, round_number=round_number)
 
     driver_prices, ctor_prices = load_scraped_prices()
     drivers, ctors = enrich_with_prices(
@@ -453,6 +473,11 @@ def run(
     )
 
     display_team(result, drivers, ctors)
+
+    # Attach the full enriched dataframes so callers (e.g. report generator)
+    # don't need to re-load and re-enrich predictions a second time.
+    result["all_drivers"] = drivers
+    result["all_ctors"] = ctors
 
     log.info("━━━ Done ━━━")
     return result
