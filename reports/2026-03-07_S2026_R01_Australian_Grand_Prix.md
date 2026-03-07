@@ -16,7 +16,7 @@
 | **ALO** | Aston Martin | $10.0M | 7.3 | 0.73 |  |
 | **STR** | Aston Martin | $9.0M | 4.9 | 0.55 |  |
 | **HUL** | Audi | $6.8M | 4.4 | 0.64 |  |
-| **LIN** | Racing Bulls | $6.2M | 4.1 | 0.67 |  |
+| **LIN** | Racing Bulls | $6.2M | 4.1 | 0.66 |  |
 
 ### Constructors
 
@@ -84,7 +84,7 @@
 | 5 | Red Bull Racing | 11.4 |
 | 6 | Audi | 5.7 |
 | 7 | Haas F1 Team | 1.7 |
-| 8 | Racing Bulls | -1.8 |
+| 8 | Racing Bulls | -1.9 |
 | 9 | Alpine | -2.5 |
 | 10 | Williams | -7.4 |
 
@@ -102,6 +102,6 @@ _PPM = Predicted Points per $M — useful for budget-constrained swaps._
 
 ---
 
-_Generated automatically by [F1 Fantasy Predictor](https://github.com) on 2026-03-07 19:05 UTC_
+_Generated automatically by [F1 Fantasy Predictor](https://github.com) on 2026-03-07 19:27 UTC_
 
 _Model: LightGBM · Optimiser: PuLP ILP · Data: FastF1 + Open-Meteo_
