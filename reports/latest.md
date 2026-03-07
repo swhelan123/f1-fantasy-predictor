@@ -1,10 +1,10 @@
-# 🏎️ F1 Fantasy Prediction — Japanese Grand Prix
+# 🏎️ F1 Fantasy Prediction — Australian Grand Prix
 
-**Season 2026 · Round 3 · Suzuka**
+**Season 2026 · Round 1 · Melbourne**
 
 ## 🌤️ Weather Forecast
 
-🌡️ **Temperature:** 18.1°C | 💧 **Humidity:** 59.9% | 💨 **Wind:** 1.7 km/h | ☀️ **Dry conditions expected**
+🌡️ **Temperature:** 21.5°C | 💧 **Humidity:** 81.0% | 💨 **Wind:** 18.2 km/h | ☀️ **Dry conditions expected**
 
 ## ⚡ Optimal Fantasy Team
 
@@ -12,37 +12,37 @@
 
 | Driver | Constructor | Price | Predicted Pts | PPM | Turbo |
 |--------|-------------|------:|-------------:|----:|:-----:|
-| **LEC** | Ferrari | $22.8M | 19.3 | 0.85 | ⚡ YES |
-| **OCO** | Haas F1 Team | $7.3M | 3.7 | 0.51 |  |
-| **HUL** | Audi | $6.8M | 3.4 | 0.51 |  |
-| **COL** | Alpine | $6.2M | 2.0 | 0.33 |  |
-| **BOR** | Audi | $6.4M | 1.1 | 0.17 |  |
+| **LEC** | Ferrari | $22.8M | 23.2 | 1.02 | ⚡ YES |
+| **PIA** | McLaren | $25.5M | 18.5 | 0.72 |  |
+| **OCO** | Haas F1 Team | $7.3M | 7.4 | 1.01 |  |
+| **COL** | Alpine | $6.2M | 3.9 | 0.63 |  |
+| **BEA** | Haas F1 Team | $7.4M | 3.5 | 0.47 |  |
 
 ### Constructors
 
 | Constructor | Price | Predicted Pts | PPM |
 |-------------|------:|-------------:|----:|
-| **Ferrari** | $23.3M | 28.6 | 1.23 |
-| **Red Bull Racing** | $24.0M | 24.7 | 1.03 |
+| **Ferrari** | $23.3M | 32.7 | 1.4 |
+| **Haas F1 Team** | $7.4M | 10.8 | 1.46 |
 
 ### 💰 Summary
 
 | Metric | Value |
 |--------|------:|
 | **Turbo Driver** | ⚡ LEC (points doubled) |
-| **Total Cost** | $96.8M |
-| **Budget Remaining** | $3.2M |
-| **Predicted Score** | 102.2 pts |
+| **Total Cost** | $99.9M |
+| **Budget Remaining** | $0.1M |
+| **Predicted Score** | 123.1 pts |
 
 ## 🎯 Turbo Driver Rationale
 
 **LEC** was selected as the turbo driver (points doubled).
 
-- **Predicted base points:** 19.3
-- **With turbo bonus:** 38.6 (effectively)
-- **Prediction rank:** #2 overall
-- **Rolling avg fantasy pts:** 4.2
-- **Circuit history avg pts:** 19.0
+- **Predicted base points:** 23.2
+- **With turbo bonus:** 46.4 (effectively)
+- **Prediction rank:** #1 overall
+- **Rolling avg fantasy pts:** 3.2
+- **Circuit history avg pts:** 16.5
 
 > 💡 The turbo driver is chosen by the optimiser to maximise total team score. The highest-predicted driver in the team gets turbo since doubling a larger number yields the biggest gain.
 
@@ -52,33 +52,33 @@
 
 | Blend | Weight |
 |-------|-------:|
-| 🧪 Testing signal | **42%** |
-| 🤖 Model (historical form) | **58%** |
+| 🧪 Testing signal | **70%** |
+| 🤖 Model (historical form) | **30%** |
 
 | Driver | Constructor | Model Pts | Testing Pts | Blended Pts | Δ from Model |
 |--------|-------------|----------:|------------:|------------:|-------------:|
-| VER | Red Bull Racing | 18.0 | 26.0 | **21.3** | 📈 +3.3 |
-| LEC | Ferrari | 11.6 | 30.0 | **19.3** | 📈 +7.7 |
-| PIA | McLaren | 15.6 | 22.0 | **18.3** | 📈 +2.7 |
-| NOR | McLaren | 13.2 | 19.0 | **15.6** | 📈 +2.4 |
-| RUS | Mercedes | 12.0 | 16.0 | **13.7** | 📈 +1.7 |
-| HAM | Ferrari | 7.4 | 12.0 | **9.3** | 📈 +1.9 |
-| ANT | Mercedes | 2.8 | 14.0 | **7.5** | 📈 +4.7 |
-| OCO | Haas F1 Team | -0.9 | 10.0 | **3.7** | 📈 +4.6 |
-| HUL | Audi | 2.3 | 5.0 | **3.4** | 📈 +1.1 |
-| HAD | Red Bull Racing | -0.0 | 8.0 | **3.3** | 📈 +3.3 |
-| COL | Alpine | -1.5 | 7.0 | **2.0** | 📈 +3.5 |
-| SAI | Williams | 1.4 | 1.0 | **1.2** | ➡️ -0.2 |
-| BOR | Audi | -0.3 | 3.0 | **1.1** | 📈 +1.4 |
-| BEA | Haas F1 Team | -1.1 | 4.0 | **1.0** | 📈 +2.1 |
-| GAS | Alpine | -0.4 | 2.0 | **0.6** | ➡️ +1.0 |
-| LIN | Racing Bulls | 3.7 | -4.0 | **0.5** | 📉 -3.2 |
-| ALB | Williams | -3.5 | 6.0 | **0.5** | 📈 +4.0 |
-| STR | Aston Martin | 3.9 | -12.0 | **-2.8** | 📉 -6.7 |
-| LAW | Racing Bulls | -5.1 | 0.0 | **-3.0** | 📈 +2.1 |
-| ALO | Aston Martin | 4.8 | -18.0 | **-4.8** | 📉 -9.6 |
-| PER | Cadillac | -12.4 | -2.0 | **-8.0** | 📈 +4.4 |
-| BOT | Cadillac | -10.0 | -7.0 | **-8.7** | 📈 +1.3 |
+| LEC | Ferrari | 7.3 | 30.0 | **23.2** | 📈 +15.9 |
+| VER | Red Bull Racing | 9.3 | 26.0 | **21.0** | 📈 +11.7 |
+| PIA | McLaren | 10.2 | 22.0 | **18.5** | 📈 +8.3 |
+| NOR | McLaren | 10.7 | 19.0 | **16.5** | 📈 +5.8 |
+| RUS | Mercedes | 6.3 | 16.0 | **13.1** | 📈 +6.8 |
+| ANT | Mercedes | 1.1 | 14.0 | **10.1** | 📈 +9.0 |
+| HAM | Ferrari | 3.6 | 12.0 | **9.5** | 📈 +5.9 |
+| OCO | Haas F1 Team | 1.2 | 10.0 | **7.4** | 📈 +6.2 |
+| HAD | Red Bull Racing | -0.8 | 8.0 | **5.3** | 📈 +6.1 |
+| COL | Alpine | -3.2 | 7.0 | **3.9** | 📈 +7.1 |
+| BEA | Haas F1 Team | 2.2 | 4.0 | **3.5** | 📈 +1.3 |
+| HUL | Audi | -3.1 | 5.0 | **2.6** | 📈 +5.7 |
+| BOR | Audi | 1.1 | 3.0 | **2.4** | 📈 +1.3 |
+| ALB | Williams | -5.9 | 6.0 | **2.4** | 📈 +8.3 |
+| SAI | Williams | 1.8 | 1.0 | **1.2** | ➡️ -0.6 |
+| GAS | Alpine | -1.1 | 2.0 | **1.1** | 📈 +2.2 |
+| LAW | Racing Bulls | -3.5 | 0.0 | **-1.1** | 📈 +2.4 |
+| LIN | Racing Bulls | 4.1 | -4.0 | **-1.6** | 📉 -5.7 |
+| PER | Cadillac | -3.7 | -2.0 | **-2.5** | 📈 +1.2 |
+| BOT | Cadillac | -4.3 | -7.0 | **-6.2** | 📉 -1.9 |
+| STR | Aston Martin | 2.3 | -12.0 | **-7.7** | 📉 -10.0 |
+| ALO | Aston Martin | 2.4 | -18.0 | **-11.9** | 📉 -14.3 |
 
 _This adjustment is strongest at Round 1 and fades to zero by Round 6 as real race data accumulates._
 
@@ -86,59 +86,59 @@ _This adjustment is strongest at Round 1 and fades to zero by Round 6 as real ra
 
 | Rank | Driver | Constructor | Predicted Pts |
 |-----:|--------|-------------|-------------:|
-| 🥇 1 | **VER** | Red Bull Racing | **21.3** |
-| 🥈 2 | **LEC** | Ferrari | **19.3** |
-| 🥉 3 | **PIA** | McLaren | **18.3** |
-| 4 | **NOR** | McLaren | 15.6 |
-| 5 | **RUS** | Mercedes | 13.7 |
-| 6 | HAM | Ferrari | 9.3 |
-| 7 | ANT | Mercedes | 7.5 |
-| 8 | OCO | Haas F1 Team | 3.7 |
-| 9 | HUL | Audi | 3.4 |
-| 10 | HAD | Red Bull Racing | 3.3 |
-| 11 | COL | Alpine | 2.0 |
-| 12 | SAI | Williams | 1.2 |
-| 13 | BOR | Audi | 1.1 |
-| 14 | BEA | Haas F1 Team | 1.0 |
-| 15 | GAS | Alpine | 0.6 |
-| 16 | LIN | Racing Bulls | 0.5 |
-| 17 | ALB | Williams | 0.5 |
-| 18 | STR | Aston Martin | -2.8 |
-| 19 | LAW | Racing Bulls | -3.0 |
-| 20 | ALO | Aston Martin | -4.8 |
-| 21 | PER | Cadillac | -8.0 |
-| 22 | BOT | Cadillac | -8.7 |
+| 🥇 1 | **LEC** | Ferrari | **23.2** |
+| 🥈 2 | **VER** | Red Bull Racing | **21.0** |
+| 🥉 3 | **PIA** | McLaren | **18.5** |
+| 4 | **NOR** | McLaren | 16.5 |
+| 5 | **RUS** | Mercedes | 13.1 |
+| 6 | ANT | Mercedes | 10.1 |
+| 7 | HAM | Ferrari | 9.5 |
+| 8 | OCO | Haas F1 Team | 7.4 |
+| 9 | HAD | Red Bull Racing | 5.3 |
+| 10 | COL | Alpine | 3.9 |
+| 11 | BEA | Haas F1 Team | 3.5 |
+| 12 | HUL | Audi | 2.6 |
+| 13 | BOR | Audi | 2.4 |
+| 14 | ALB | Williams | 2.4 |
+| 15 | SAI | Williams | 1.2 |
+| 16 | GAS | Alpine | 1.1 |
+| 17 | LAW | Racing Bulls | -1.1 |
+| 18 | LIN | Racing Bulls | -1.6 |
+| 19 | PER | Cadillac | -2.5 |
+| 20 | BOT | Cadillac | -6.2 |
+| 21 | STR | Aston Martin | -7.7 |
+| 22 | ALO | Aston Martin | -11.9 |
 
 ## 🏗️ Constructor Predictions
 
 | Rank | Constructor | Predicted Pts |
 |-----:|-------------|-------------:|
-| 🥇 1 | **McLaren** | **33.9** |
-| 🥈 2 | **Ferrari** | **28.6** |
-| 🥉 3 | **Red Bull Racing** | **24.7** |
-| 4 | Mercedes | 21.2 |
-| 5 | Haas F1 Team | 4.7 |
-| 6 | Audi | 4.5 |
-| 7 | Alpine | 2.7 |
-| 8 | Williams | 1.7 |
-| 9 | Racing Bulls | -2.5 |
-| 10 | Aston Martin | -7.5 |
-| 11 | Cadillac | -16.8 |
+| 🥇 1 | **McLaren** | **35.0** |
+| 🥈 2 | **Ferrari** | **32.7** |
+| 🥉 3 | **Red Bull Racing** | **26.3** |
+| 4 | Mercedes | 23.2 |
+| 5 | Haas F1 Team | 10.8 |
+| 6 | Alpine | 5.0 |
+| 7 | Audi | 5.0 |
+| 8 | Williams | 3.7 |
+| 9 | Racing Bulls | -2.6 |
+| 10 | Cadillac | -8.7 |
+| 11 | Aston Martin | -19.6 |
 
 ## 💎 Value Picks (not in optimal team)
 
 | Driver | Constructor | Price | Predicted Pts | PPM |
 |--------|-------------|------:|-------------:|----:|
-| VER | Red Bull Racing | $27.7M | 21.3 | 0.77 |
-| PIA | McLaren | $25.5M | 18.3 | 0.72 |
-| NOR | McLaren | $27.2M | 15.6 | 0.58 |
-| RUS | Mercedes | $27.4M | 13.7 | 0.5 |
-| HAM | Ferrari | $22.5M | 9.3 | 0.41 |
+| VER | Red Bull Racing | $27.7M | 21.0 | 0.76 |
+| NOR | McLaren | $27.2M | 16.5 | 0.61 |
+| RUS | Mercedes | $27.4M | 13.1 | 0.48 |
+| ANT | Mercedes | $23.2M | 10.1 | 0.44 |
+| HAM | Ferrari | $22.5M | 9.5 | 0.42 |
 
 _PPM = Predicted Points per $M — useful for budget-constrained swaps._
 
 ---
 
-_Generated automatically by [F1 Fantasy Predictor](https://github.com) on 2026-03-07 20:28 UTC_
+_Generated automatically by [F1 Fantasy Predictor](https://github.com) on 2026-03-07 20:34 UTC_
 
 _Model: LightGBM · Optimiser: PuLP ILP · Data: FastF1 + Open-Meteo_
