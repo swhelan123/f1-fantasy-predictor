@@ -1,0 +1,63 @@
+name: Weekly F1 Fantasy Prediction
+
+on:
+  schedule:
+    # Runs every Thursday at 08:00 UTC (adjust to before your race deadline)
+    - cron: '0 8 * * 4'
+  workflow_dispatch: # Allow manual trigger too
+
+jobs:
+  predict:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          playwright install chromium
+
+      - name: Fetch latest race data
+        run: python src/data/fetch_fastf1.py
+
+      - name: Scrape fantasy prices
+        run: python src/data/scrape_prices.py
+        env:
+          F1_FANTASY_EMAIL: ${{ secrets.F1_FANTASY_EMAIL }}
+          F1_FANTASY_PASSWORD: ${{ secrets.F1_FANTASY_PASSWORD }}
+
+      - name: Engineer features
+        run: python src/features/engineer.py
+
+      - name: Train / update model
+        run: python src/models/train.py
+
+      - name: Generate predictions
+        run: python src/models/predict.py
+
+      - name: Run team optimiser
+        run: python src/optimiser/team_selector.py
+
+      - name: Generate report
+        run: python src/report/generate.py
+
+      - name: Commit report to repo
+        run: |
+          git config --global user.name "f1-fantasy-bot"
+          git config --global user.email "bot@f1fantasy"
+          git add reports/
+          git diff --staged --quiet || git commit -m "🏎️ Auto: Race week prediction $(date +'%Y-%m-%d')"
+          git push

@@ -1,0 +1,26 @@
+# Data
+fastf1
+pandas
+numpy
+duckdb
+requests
+playwright
+
+# ML
+lightgbm
+scikit-learn
+optuna
+shap
+mlflow
+
+# Optimisation
+PuLP
+
+# Automation / reporting
+jinja2
+PyYAML
+
+# Dev
+jupyter
+ipykernel
+python-dotenv

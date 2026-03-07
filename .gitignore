@@ -1,0 +1,34 @@
+# Virtual environment
+venv/
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# FastF1 cache (large, regeneratable)
+fastf1_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# MLflow
+mlruns/
+
+# DVC
+.dvc/tmp/
+.dvc/cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets
+*.env
+secrets.yaml
+
+# Outputs (committed selectively)
+*.log
