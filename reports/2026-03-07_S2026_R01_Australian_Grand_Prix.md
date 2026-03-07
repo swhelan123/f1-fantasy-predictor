@@ -139,6 +139,6 @@ _PPM = Predicted Points per $M — useful for budget-constrained swaps._
 
 ---
 
-_Generated automatically by [F1 Fantasy Predictor](https://github.com) on 2026-03-07 19:51 UTC_
+_Generated automatically by [F1 Fantasy Predictor](https://github.com) on 2026-03-07 20:28 UTC_
 
 _Model: LightGBM · Optimiser: PuLP ILP · Data: FastF1 + Open-Meteo_
