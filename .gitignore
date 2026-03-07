@@ -17,6 +17,7 @@ fastf1_cache/
 
 # MLflow
 mlruns/
+mlflow.db
 
 # DVC
 .dvc/tmp/

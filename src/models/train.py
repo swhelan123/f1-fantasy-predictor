@@ -376,7 +376,10 @@ def run(tune: bool = False, seasons: list[int] | None = None, val_rounds: int = 
                 "val_r2": metrics["r2"],
             }
         )
-        mlflow.lightgbm.log_model(model, "lgbm_model")
+        try:
+            mlflow.lightgbm.log_model(model, "lgbm_model")
+        except Exception as e:
+            log.warning("MLflow log_model failed (safe to ignore in CI): %s", e)
 
     save_model(model, list(X_train.columns), metrics)
 
