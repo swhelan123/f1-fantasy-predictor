@@ -414,6 +414,62 @@ def add_weather(df: pd.DataFrame, weather: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+# ── Step 6b: Wet Driver Performance ──────────────────────────────────────────
+
+
+def add_wet_driver_features(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    For each driver-round, compute their historical wet-race performance
+    using only races PRIOR to this round (no leakage).
+
+    Features added:
+      WetRaceAvgPts     — avg TotalFantasyPts in wet races (Rainfall==1)
+      WetRaceDNFRate    — DNF rate in wet races
+      WetVsDryDelta     — WetRaceAvgPts minus DryRaceAvgPts (+ = better in wet)
+      WetRaceCount      — number of prior wet races (reliability indicator)
+    """
+    log.info("Step 6b — wet driver performance features...")
+    df = df.sort_values(["Driver", "Season", "Round"]).reset_index(drop=True)
+
+    wet_avg_pts = []
+    wet_dnf_rate = []
+    wet_vs_dry = []
+    wet_count = []
+
+    for _, row in df.iterrows():
+        prior = df[
+            (df["Driver"] == row["Driver"])
+            & (
+                (df["Season"] < row["Season"])
+                | ((df["Season"] == row["Season"]) & (df["Round"] < row["Round"]))
+            )
+        ]
+        wet = prior[prior["Rainfall"] == 1]
+        dry = prior[prior["Rainfall"] == 0]
+
+        w_pts = wet["TotalFantasyPts"].mean() if len(wet) > 0 else np.nan
+        w_dnf = wet["DNF"].astype(float).mean() if len(wet) > 0 else np.nan
+        d_pts = dry["TotalFantasyPts"].mean() if len(dry) > 0 else np.nan
+        delta = (w_pts - d_pts) if pd.notna(w_pts) and pd.notna(d_pts) else np.nan
+
+        wet_avg_pts.append(w_pts)
+        wet_dnf_rate.append(w_dnf)
+        wet_vs_dry.append(delta)
+        wet_count.append(len(wet))
+
+    df["WetRaceAvgPts"] = wet_avg_pts
+    df["WetRaceDNFRate"] = wet_dnf_rate
+    df["WetVsDryDelta"] = wet_vs_dry
+    df["WetRaceCount"] = wet_count
+
+    n_wet_races = (df["Rainfall"] == 1).sum()
+    log.info(
+        "  %d wet race rows in dataset | wet features computed for all drivers",
+        n_wet_races,
+    )
+    return df
+
+
 # ── Step 7: PPM Proxy ─────────────────────────────────────────────────────────
 
 
@@ -472,6 +528,10 @@ FEATURE_COLS = [
     "AvgHumidity",
     "AvgWindSpeed",
     "Rainfall",
+    "WetRaceAvgPts",
+    "WetRaceDNFRate",
+    "WetVsDryDelta",
+    "WetRaceCount",
     "RollingPPM_Proxy",
     # Testing features (NaN for historical rows, populated for 2026+)
     "TestFastestLap",
@@ -540,6 +600,7 @@ def run():
     df = add_teammate(df)
     df = add_pitstops(df, pit_stops)
     df = add_weather(df, weather)
+    df = add_wet_driver_features(df)
     df = add_ppm(df)
     df = add_testing(df, con)
     df = encode(df)

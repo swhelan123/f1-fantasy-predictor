@@ -81,7 +81,7 @@ DRIVER_PRICES_2026 = {
 
 CONSTRUCTOR_PRICES_2026 = {
     "McLaren": 28.9,
-    "Ferrari": 23.2,
+    "Ferrari": 23.3,
     "Mercedes": 29.3,
     "Red Bull Racing": 24.0,
     "Aston Martin": 10.3,
@@ -144,6 +144,8 @@ def enrich_with_prices(
     ctors: pd.DataFrame,
     driver_prices: dict | None = None,
     ctor_prices: dict | None = None,
+    exclude_drivers: list[str] | None = None,
+    exclude_ctors: list[str] | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Attach prices to prediction dataframes.
@@ -152,9 +154,20 @@ def enrich_with_prices(
     dp = driver_prices or DRIVER_PRICES_2026
     cp = ctor_prices or CONSTRUCTOR_PRICES_2026
 
+    # Normalise constructor names (Kick Sauber → Audi for 2026)
+    drivers["Constructor"] = drivers["Constructor"].replace({"Kick Sauber": "Audi"})
+
     # Filter to known 2026 drivers only (removes ghost drivers from old seasons)
     drivers = drivers[drivers["Driver"].isin(dp)].copy()
     ctors = ctors[ctors["Constructor"].isin(cp)].copy()
+
+    # Apply exclusions
+    if exclude_drivers:
+        drivers = drivers[~drivers["Driver"].isin(exclude_drivers)]
+        log.info("Excluded drivers: %s", exclude_drivers)
+    if exclude_ctors:
+        ctors = ctors[~ctors["Constructor"].isin(exclude_ctors)]
+        log.info("Excluded constructors: %s", exclude_ctors)
 
     drivers["Price"] = drivers["Driver"].map(dp)
     ctors["Price"] = ctors["Constructor"].map(cp)
@@ -358,6 +371,43 @@ def display_team(result: dict, drivers: pd.DataFrame, ctors: pd.DataFrame):
     log.info("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
 
+def load_scraped_prices() -> tuple[dict | None, dict | None]:
+    """
+    Load prices from scrape_prices.py output if available.
+    Returns (driver_prices, ctor_prices) dicts, or (None, None) to fall back to hardcoded.
+    """
+    prices_path = PROCESSED / "player_prices.parquet"
+    if not prices_path.exists():
+        log.info("No scraped prices found — using hardcoded launch prices")
+        return None, None
+
+    df = pd.read_parquet(prices_path)
+    scraped_at = df["ScrapedAt"].max() if "ScrapedAt" in df.columns else "unknown"
+    log.info("Using scraped prices from %s (%d records)", scraped_at, len(df))
+
+    drivers_df = df[df["Type"].str.lower().str.contains("driver", na=False)]
+    ctors_df = df[df["Type"].str.lower().str.contains("constructor", na=False)]
+
+    driver_prices = dict(zip(drivers_df["Code"], drivers_df["Price"]))
+    ctor_prices = dict(zip(ctors_df["Code"], ctors_df["Price"]))
+
+    # Fall back to hardcoded if scraper returned too few results
+    if len(driver_prices) < 10:
+        log.warning(
+            "Scraped driver prices too sparse (%d) — using hardcoded",
+            len(driver_prices),
+        )
+        driver_prices = None
+    if len(ctor_prices) < 5:
+        log.warning(
+            "Scraped constructor prices too sparse (%d) — using hardcoded",
+            len(ctor_prices),
+        )
+        ctor_prices = None
+
+    return driver_prices, ctor_prices
+
+
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 
@@ -366,11 +416,22 @@ def run(
     turbo_driver: str | None = None,
     current_team: list[str] | None = None,
     free_transfers: int = 3,
+    exclude_drivers: list[str] | None = None,
+    exclude_ctors: list[str] | None = None,
 ) -> dict:
     log.info("━━━ F1 Fantasy Team Selector ━━━")
 
     drivers, ctors = load_predictions()
-    drivers, ctors = enrich_with_prices(drivers, ctors)
+
+    driver_prices, ctor_prices = load_scraped_prices()
+    drivers, ctors = enrich_with_prices(
+        drivers,
+        ctors,
+        driver_prices,
+        ctor_prices,
+        exclude_drivers=exclude_drivers,
+        exclude_ctors=exclude_ctors,
+    )
 
     log.info("── Prediction Summary ──")
     log.info(
@@ -412,8 +473,7 @@ if __name__ == "__main__":
         "--current-team",
         type=str,
         default=None,
-        help="Comma-separated current team for transfer planning "
-        "e.g. VER,NOR,LEC,RUS,PIA,McLaren,Ferrari",
+        help="Comma-separated current team e.g. VER,NOR,LEC,RUS,PIA,McLaren,Ferrari",
     )
     parser.add_argument(
         "--transfers",
@@ -421,13 +481,29 @@ if __name__ == "__main__":
         default=3,
         help="Number of free transfers available (default: 3)",
     )
+    parser.add_argument(
+        "--exclude-drivers",
+        type=str,
+        default=None,
+        help="Comma-separated drivers to exclude e.g. ALO,STR",
+    )
+    parser.add_argument(
+        "--exclude-ctors",
+        type=str,
+        default=None,
+        help="Comma-separated constructors to exclude e.g. 'Aston Martin'",
+    )
     args = parser.parse_args()
 
     current = args.current_team.split(",") if args.current_team else None
+    ex_drivers = args.exclude_drivers.split(",") if args.exclude_drivers else None
+    ex_ctors = args.exclude_ctors.split(",") if args.exclude_ctors else None
 
     run(
         budget=args.budget,
         turbo_driver=args.turbo,
         current_team=current,
         free_transfers=args.transfers,
+        exclude_drivers=ex_drivers,
+        exclude_ctors=ex_ctors,
     )
