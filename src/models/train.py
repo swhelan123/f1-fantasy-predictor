@@ -85,6 +85,10 @@ ML_FEATURES = [
     "Rainfall",
     # PPM proxy
     "RollingPPM_Proxy",
+    # Pre-season testing (NaN for 2024/2025, populated for 2026+)
+    "TestFastestLapRank",
+    "TestLongRunRank",
+    "TestTotalLaps",
     # Encoded categoricals
     "Driver_enc",
     "Constructor_enc",

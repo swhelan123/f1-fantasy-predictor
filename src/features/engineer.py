@@ -473,10 +473,57 @@ FEATURE_COLS = [
     "AvgWindSpeed",
     "Rainfall",
     "RollingPPM_Proxy",
+    # Testing features (NaN for historical rows, populated for 2026+)
+    "TestFastestLap",
+    "TestLongRunPace",
+    "TestTotalLaps",
+    "TestFastestLapRank",
+    "TestLongRunRank",
     "Driver_enc",
     "Constructor_enc",
     "Location_enc",
 ]
+
+
+# ── Testing Features Join ─────────────────────────────────────────────────────
+
+
+def add_testing(df: pd.DataFrame, con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
+    """
+    Join pre-season testing features onto each driver row.
+    Testing data is season-level (not round-level) so it joins on Season+Driver.
+    Historical rows (2024/2025) will have NaN for testing cols — that's correct.
+    """
+    try:
+        testing = con.execute("SELECT * FROM testing_results").df()
+    except Exception:
+        log.info("Step 9 — no testing data in DB, skipping")
+        for col in [
+            "TestFastestLap",
+            "TestLongRunPace",
+            "TestTotalLaps",
+            "TestFastestLapRank",
+            "TestLongRunRank",
+        ]:
+            df[col] = np.nan
+        return df
+
+    log.info("Step 9 — joining testing features (%d drivers)...", len(testing))
+    testing = testing[
+        [
+            "Season",
+            "Driver",
+            "TestFastestLap",
+            "TestLongRunPace",
+            "TestTotalLaps",
+            "TestFastestLapRank",
+            "TestLongRunRank",
+        ]
+    ]
+    df = df.merge(testing, on=["Season", "Driver"], how="left")
+    n_matched = df["TestFastestLap"].notna().sum()
+    log.info("  Testing features matched %d rows", n_matched)
+    return df
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -494,6 +541,7 @@ def run():
     df = add_pitstops(df, pit_stops)
     df = add_weather(df, weather)
     df = add_ppm(df)
+    df = add_testing(df, con)
     df = encode(df)
 
     final = df[[c for c in FEATURE_COLS if c in df.columns]].copy()
