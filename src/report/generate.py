@@ -87,6 +87,7 @@ def _load_prices() -> pd.DataFrame | None:
 def _run_optimiser(
     season: int | None = None,
     round_number: int | None = None,
+    current_team: str | None = None,
 ) -> dict:
     """Run the team selector and return the result dict."""
     import sys
@@ -94,7 +95,11 @@ def _run_optimiser(
     sys.path.insert(0, str(ROOT))
     from src.optimiser.team_selector import run as optimise_run
 
-    return optimise_run(season=season, round_number=round_number)
+    return optimise_run(
+        season=season,
+        round_number=round_number,
+        current_team=current_team,
+    )
 
 
 def _get_race_metadata(drivers: pd.DataFrame) -> dict:
@@ -287,10 +292,105 @@ def _constructor_predictions_section(ctors: pd.DataFrame) -> str:
     return "\n".join(lines)
 
 
+def _transfer_plan_section(result: dict) -> str:
+    """Build the transfer plan section when a current team was provided."""
+    if not result.get("current_team_drivers"):
+        return ""
+
+    lines = []
+    n = result.get("n_transfers", 0)
+    ft = result.get("free_transfers", 2)
+    excess = result.get("excess_transfers", 0)
+    cost = result.get("transfer_cost", 0)
+    gross = result.get("gross_score", result.get("predicted_score", 0))
+    net = result.get("predicted_score", 0)
+    penalty_per = result.get("penalty_per_transfer", 10)
+
+    lines.append("## 🔄 Transfer Plan\n")
+
+    if n == 0:
+        lines.append(
+            "> ✅ **No transfers recommended** — your current team is already "
+            "the best option within budget.\n"
+        )
+    else:
+        # Summary table
+        lines.append("| | |")
+        lines.append("|---|---|")
+        lines.append(f"| **Transfers** | {n} |")
+        lines.append(f"| **Free** | {min(n, ft)} of {ft} |")
+        if excess > 0:
+            lines.append(
+                f"| **Excess** | {excess} × −{penalty_per:.0f} pts = **−{cost:.0f} pts** |"
+            )
+            lines.append(f"| **Gross score** | {gross:.1f} pts |")
+            lines.append(f"| **Net score** | **{net:.1f} pts** (after penalty) |")
+        lines.append("")
+
+        # Transfer table
+        lines.append("| | Player | Type | Price |")
+        lines.append("|---|--------|------|------:|")
+        for tx in result.get("transfers_out", []):
+            lines.append(
+                f"| ❌ OUT | **{tx['name']}** | {tx['type'].title()} | ${tx['price']:.1f}M |"
+            )
+        for tx in result.get("transfers_in", []):
+            lines.append(
+                f"| ✅ IN | **{tx['name']}** | {tx['type'].title()} | ${tx['price']:.1f}M |"
+            )
+        lines.append("")
+
+        if excess > 0:
+            lines.append(
+                f"> ⚠️ This plan uses **{excess} excess transfer{'s' if excess != 1 else ''}** "
+                f"(−{cost:.0f} pts penalty) because the points gain outweighs the cost.\n"
+            )
+
+    # Show the gap to the unconstrained optimum
+    delta = result.get("gross_delta", 0)
+    unconstrained = result.get("unconstrained_result")
+    if delta > 0.5 and unconstrained is not None:
+        # Count transfers needed from current team to unconstrained team
+        cur_drv = set(result.get("current_team_drivers", []))
+        cur_ctor = set(result.get("current_team_ctors", []))
+        unc_drv = set(unconstrained.get("drivers", []))
+        unc_ctor = set(unconstrained.get("constructors", []))
+        unc_n = len(unc_drv - cur_drv) + len(unc_ctor - cur_ctor)
+
+        lines.append("### 📊 Unconstrained Optimum (target team)\n")
+        lines.append(
+            f"The best possible team (with unlimited free transfers) scores "
+            f"**{unconstrained['gross_score']:.1f} pts** and requires "
+            f"**{unc_n} total transfers** from your current team — "
+            f"that's **{delta:.1f} gross pts** more than the recommended team.\n"
+        )
+        # Show what the unconstrained team looks like
+        lines.append("| Driver / Constructor | In Your Team? |")
+        lines.append("|----------------------|:-------------:|")
+        for drv in unconstrained.get("drivers", []):
+            marker = "✅" if drv in cur_drv else "🆕"
+            lines.append(f"| {drv} | {marker} |")
+        for ctor in unconstrained.get("constructors", []):
+            marker = "✅" if ctor in cur_ctor else "🆕"
+            lines.append(f"| {ctor} | {marker} |")
+        lines.append("")
+        lines.append("_Plan towards this team over the coming weeks._\n")
+    elif delta <= 0.5:
+        lines.append(
+            "> 🎯 Your recommended team **is** the overall optimum — "
+            "no points left on the table!\n"
+        )
+
+    return "\n".join(lines)
+
+
 def _optimal_team_section(result: dict) -> str:
     """Build the optimal team selection section."""
     lines = []
-    lines.append("## ⚡ Optimal Fantasy Team\n")
+    if result.get("current_team_drivers"):
+        lines.append("## ⚡ Recommended Team (after transfers)\n")
+    else:
+        lines.append("## ⚡ Optimal Fantasy Team\n")
 
     # Drivers table
     lines.append("### Drivers\n")
@@ -348,9 +448,17 @@ def _optimal_team_section(result: dict) -> str:
     lines.append(
         f"| **Budget Remaining** | ${result.get('budget_remaining', 0):.1f}M |"
     )
-    lines.append(
-        f"| **Predicted Score** | {result.get('predicted_score', 0):.1f} pts |"
-    )
+    transfer_cost = result.get("transfer_cost", 0)
+    if transfer_cost > 0:
+        gross = result.get("gross_score", 0)
+        net = result.get("predicted_score", 0)
+        lines.append(f"| **Gross Score** | {gross:.1f} pts |")
+        lines.append(f"| **Transfer Penalty** | −{transfer_cost:.0f} pts |")
+        lines.append(f"| **Net Score** | **{net:.1f} pts** |")
+    else:
+        lines.append(
+            f"| **Predicted Score** | {result.get('predicted_score', 0):.1f} pts |"
+        )
     lines.append("")
 
     return "\n".join(lines)
@@ -488,7 +596,12 @@ def build_report(
     # Weather
     sections.append(_weather_section(meta))
 
-    # Optimal team (the main event — put it high up)
+    # Transfer plan (only when a current team was provided)
+    transfer_section = _transfer_plan_section(result)
+    if transfer_section:
+        sections.append(transfer_section)
+
+    # Optimal / recommended team
     sections.append(_optimal_team_section(result))
 
     # Turbo rationale
@@ -542,13 +655,21 @@ def save_report(report_md: str, meta: dict) -> tuple[Path, Path]:
 def run(
     season: int | None = None,
     round_number: int | None = None,
+    current_team: str | None = None,
 ) -> str:
     """
     Full report generation pipeline:
       1. Load predictions (for a specific season/round or latest)
-      2. Run optimiser
+      2. Run optimiser (with current-team transfer awareness if provided)
       3. Build Markdown report
       4. Save to /reports/
+
+    Args:
+        season:       Season year, or None for latest.
+        round_number: Round number, or None for latest.
+        current_team: Comma-separated current team string
+                      (e.g. "VER,NOR,LEC,RUS,PIA,McLaren,Ferrari"),
+                      or None for unconstrained optimisation.
 
     Returns the Markdown report string.
     """
@@ -562,11 +683,16 @@ def run(
         len(ctors),
     )
 
+    if current_team:
+        log.info("Current team provided: %s", current_team)
+
     # Run optimiser to get team selection (same season/round as predictions).
     # The optimiser already loads, enriches with prices, and optimises in one
     # pass — it returns the enriched dataframes on the result dict so we don't
     # need to duplicate that work here.
-    result = _run_optimiser(season=season, round_number=round_number)
+    result = _run_optimiser(
+        season=season, round_number=round_number, current_team=current_team
+    )
 
     # Use the fully-enriched driver/ctor lists the optimiser already built
     if "all_drivers" in result and "all_ctors" in result:
@@ -596,6 +722,18 @@ if __name__ == "__main__":
         "--season", type=int, default=None, help="F1 season year (e.g. 2026)"
     )
     parser.add_argument("--round", type=int, default=None, help="Round number (e.g. 2)")
+    parser.add_argument(
+        "--current-team",
+        type=str,
+        default=None,
+        dest="current_team",
+        help=(
+            "Comma-separated current team: 5 driver codes + 2 constructor names. "
+            "E.g. VER,NOR,LEC,RUS,PIA,McLaren,Ferrari. "
+            "When provided, the optimiser limits changes to 2 free transfers "
+            "and the report includes a transfer plan."
+        ),
+    )
     args = parser.parse_args()
 
-    run(season=args.season, round_number=args.round)
+    run(season=args.season, round_number=args.round, current_team=args.current_team)

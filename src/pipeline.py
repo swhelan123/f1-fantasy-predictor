@@ -99,16 +99,16 @@ def step_predict(season: int):
     predict_run(season=season)
 
 
-def step_optimise():
+def step_optimise(current_team: str | None = None):
     from src.optimiser.team_selector import run as optimise_run
 
-    optimise_run()
+    optimise_run(current_team=current_team)
 
 
-def step_generate_report() -> str:
+def step_generate_report(current_team: str | None = None) -> str:
     from src.report.generate import run as report_run
 
-    return report_run()
+    return report_run(current_team=current_team)
 
 
 # ── Main Pipeline ─────────────────────────────────────────────────────────────
@@ -120,6 +120,7 @@ def run(
     skip_scraper: bool = False,
     skip_train: bool = False,
     skip_report: bool = False,
+    current_team: str | None = None,
 ) -> bool:
     """
     Run the full F1 Fantasy prediction pipeline.
@@ -130,6 +131,10 @@ def run(
         skip_scraper: Skip price scraping (use cached/hardcoded prices)
         skip_train:   Skip model training (reuse existing model)
         skip_report:  Skip report generation
+        current_team: Comma-separated current team string
+                      (e.g. "VER,NOR,LEC,RUS,PIA,McLaren,Ferrari").
+                      When provided, optimiser limits changes to 2 free
+                      transfers and shows a transfer plan.
 
     Returns:
         True if pipeline completed successfully, False otherwise
@@ -143,6 +148,8 @@ def run(
         "SKIP" if skip_train else "ON",
         "SKIP" if skip_report else "ON",
     )
+    if current_team:
+        log.info("  Current Team: %s", current_team)
     log.info("=" * 60 + "\n")
 
     pipeline_start = time.time()
@@ -206,7 +213,11 @@ def run(
         return False
 
     # ── Step 6: Team optimisation ─────────────────────────────────────────────
-    ok = run_step("Step 6/7 — Optimise Team", step_optimise)
+    ok = run_step(
+        "Step 6/7 — Optimise Team",
+        step_optimise,
+        current_team=current_team,
+    )
     if not ok:
         failed_steps.append("optimise")
         log.warning("Optimiser failed — report will have limited data.\n")
@@ -215,7 +226,11 @@ def run(
     if skip_report:
         log.info("⏭️  Skipping report generation (--skip-report)\n")
     else:
-        ok = run_step("Step 7/7 — Generate Report", step_generate_report)
+        ok = run_step(
+            "Step 7/7 — Generate Report",
+            step_generate_report,
+            current_team=current_team,
+        )
         if not ok:
             failed_steps.append("generate_report")
             log.warning("Report generation failed.\n")
@@ -267,6 +282,18 @@ if __name__ == "__main__":
         action="store_true",
         help="Skip report generation",
     )
+    parser.add_argument(
+        "--current-team",
+        type=str,
+        default=None,
+        dest="current_team",
+        help=(
+            "Comma-separated current team: 5 driver codes + 2 constructor names. "
+            "E.g. VER,NOR,LEC,RUS,PIA,McLaren,Ferrari. "
+            "When provided, the optimiser limits changes to 2 free transfers "
+            "and shows a transfer plan."
+        ),
+    )
     args = parser.parse_args()
 
     success = run(
@@ -275,6 +302,7 @@ if __name__ == "__main__":
         skip_scraper=args.skip_scraper,
         skip_train=args.skip_train,
         skip_report=args.skip_report,
+        current_team=args.current_team,
     )
 
     sys.exit(0 if success else 1)

@@ -2,13 +2,15 @@
 
 An automated ML pipeline that predicts the optimal F1 Fantasy team each race week, powered by FastF1, LightGBM, and GitHub Actions.
 
+**New: Transfer-aware optimisation** — provide your current team and the optimiser will find the best team reachable within 2 free transfers, plus show you the unconstrained optimum to plan towards.
+
 ## How it works
 
 1. **Data** — Pulls race, qualifying, and pit stop data via FastF1 + fetches live fantasy prices from the official F1 Fantasy API
 2. **Features** — Engineers rolling form, circuit-specific stats, PPM trends, pit stop consistency
 3. **Model** — LightGBM regression predicts fantasy points per driver/constructor
-4. **Optimiser** — PuLP solves the constrained $100M knapsack to pick the best team
-5. **Report** — Generates a Markdown report with the optimal team, predictions, and rationale
+4. **Optimiser** — PuLP solves the constrained $100M knapsack to pick the best team, respecting the 2 free-transfer limit when a current team is provided
+5. **Report** — Generates a Markdown report with the optimal team, transfer plan, predictions, and rationale
 6. **Automation** — GitHub Actions runs the full pipeline every Thursday and publishes the report
 
 ## Viewing your weekly prediction
@@ -44,8 +46,11 @@ pip install -r requirements.txt
 ### Full pipeline (recommended)
 
 ```bash
-# Run the complete pipeline end-to-end
+# Run the complete pipeline end-to-end (greenfield — no current team)
 python src/pipeline.py
+
+# With your current team — optimiser limits to 2 free transfers
+python src/pipeline.py --current-team LEC,PIA,OCO,COL,BEA,Ferrari,HaasF1Team
 
 # Specify season and number of recent races to fetch
 python src/pipeline.py --season 2026 --races 5
@@ -57,7 +62,7 @@ python src/pipeline.py --skip-scraper
 python src/pipeline.py --skip-train
 
 # Combine flags
-python src/pipeline.py --skip-scraper --skip-train
+python src/pipeline.py --skip-scraper --skip-train --current-team LEC,PIA,OCO,COL,BEA,Ferrari,HaasF1Team
 ```
 
 ### Individual steps
@@ -84,12 +89,17 @@ python src/models/predict.py --wet    # force wet race prediction
 python src/models/predict.py --dry    # force dry race prediction
 
 # 6. Optimise team
-python src/optimiser/team_selector.py
-python src/optimiser/team_selector.py --budget 100 --turbo VER
-python src/optimiser/team_selector.py --current-team VER,NOR,LEC,RUS,PIA,McLaren,Ferrari
+python src/optimiser/team_selector.py                          # greenfield (no current team)
+python src/optimiser/team_selector.py --budget 100 --turbo VER # override budget/turbo
+python src/optimiser/team_selector.py \
+    --current-team LEC,PIA,OCO,COL,BEA,Ferrari,HaasF1Team     # transfer-aware (2 free)
+python src/optimiser/team_selector.py \
+    --current-team LEC,PIA,OCO,COL,BEA,Ferrari,HaasF1Team \
+    --free-transfers 7                                         # wildcard week
 
 # 7. Generate report
 python src/report/generate.py
+python src/report/generate.py --current-team LEC,PIA,OCO,COL,BEA,Ferrari,HaasF1Team
 ```
 
 ## GitHub Actions — automated weekly predictions
@@ -172,16 +182,52 @@ f1-fantasy-predictor/
 └── requirements.txt
 ```
 
+## Transfer-aware optimisation
+
+F1 Fantasy allows **2 free transfers per race week** — any additional transfers cost **10 points each**. When you provide your current team via `--current-team`, the optimiser uses a **soft penalty model**: excess transfers are penalised at −10 pts each in the objective function, so the solver will automatically take 3, 4, or even 7 transfers if the points gain outweighs the penalty cost. It does the maths for you.
+
+Specifically the optimiser:
+
+1. **Finds the best team accounting for transfer penalties** — the solver balances raw points gain against the −10 pts/excess transfer cost, so it may recommend 0 transfers (keep your team) or 5 transfers (if the net gain is worth it)
+2. **Also solves unconstrained** (no penalty at all) to show the theoretical ceiling — the team you'd pick with unlimited free transfers
+3. **Shows the gap** — gross points left on the table vs the unconstrained optimum, so you can plan towards the ideal team over coming weeks
+
+The `--current-team` flag accepts a comma-separated list of **5 driver codes + 2 constructor names** in any order. Constructors are auto-detected from the known list; everything else is treated as a driver code.
+
+```bash
+# Example: your current team
+python src/pipeline.py --current-team LEC,VER,OCO,COL,BEA,Ferrari,RacingBulls
+
+# Wildcard week — override the free transfer count (e.g. all 7 are free)
+python src/optimiser/team_selector.py \
+    --current-team LEC,VER,OCO,COL,BEA,Ferrari,RacingBulls \
+    --free-transfers 7
+```
+
+The generated report includes a **🔄 Transfer Plan** section showing:
+
+- Exactly which players to transfer out and in
+- How many transfers are free vs excess, and the total penalty cost
+- Gross score vs net score (after penalty deduction)
+- If the unconstrained optimum differs: the target team to build towards and the gross points gap
+- A warning when excess transfers are recommended (with an explanation that the gain outweighs the cost)
+
+When no `--current-team` is provided, the optimiser runs unconstrained (greenfield pick) — useful for initial team selection or analysis.
+
+> **GitHub Actions:** When you trigger the workflow manually, there's a **"Your current team"** input field where you can type your team directly from your phone — no CLI needed.
+
 ## Weekly reports
 
 Each race week a new report is auto-committed to `/reports/` with:
 
 - 🌤️ Weather forecast for the race weekend
+- 🔄 Transfer plan (when current team is provided) — who to swap in/out, penalty breakdown, net vs gross score
 - ⚡ Optimal $100M team selection with turbo driver pick
 - 🏁 Predicted points per driver (ranked)
 - 🏗️ Predicted points per constructor (ranked)
 - 💎 Value picks (high PPM drivers outside the optimal team)
 - 🎯 Turbo driver rationale
+- 📊 Unconstrained optimum comparison — the target team to plan towards
 
 ## Tech stack
 

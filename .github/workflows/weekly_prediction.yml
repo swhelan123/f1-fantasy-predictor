@@ -22,6 +22,10 @@ on:
         required: false
         type: boolean
         default: false
+      current_team:
+        description: "Your current team (5 drivers + 2 constructors, comma-separated). E.g. LEC,PIA,OCO,COL,BEA,Ferrari,Haas F1 Team"
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -191,10 +195,24 @@ jobs:
         run: python src/models/predict.py --season ${{ env.SEASON }}
 
       - name: Run team optimiser
-        run: python src/optimiser/team_selector.py
+        env:
+          CURRENT_TEAM: ${{ github.event.inputs.current_team }}
+        run: |
+          if [ -n "$CURRENT_TEAM" ]; then
+            python src/optimiser/team_selector.py --current-team "$CURRENT_TEAM"
+          else
+            python src/optimiser/team_selector.py
+          fi
 
       - name: Generate report
-        run: python src/report/generate.py
+        env:
+          CURRENT_TEAM: ${{ github.event.inputs.current_team }}
+        run: |
+          if [ -n "$CURRENT_TEAM" ]; then
+            python src/report/generate.py --current-team "$CURRENT_TEAM"
+          else
+            python src/report/generate.py
+          fi
 
       - name: Write report to Job Summary
         if: always()
