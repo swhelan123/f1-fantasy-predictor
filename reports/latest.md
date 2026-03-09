@@ -6,84 +6,43 @@
 
 🌡️ **Temperature:** 11.5°C | 💧 **Humidity:** 95.0% | 💨 **Wind:** 11.7 km/h | ☀️ **Dry conditions expected**
 
-## 🔄 Transfer Plan
-
-| | |
-|---|---|
-| **Transfers** | 4 |
-| **Free** | 2 of 2 |
-| **Excess** | 2 × −10 pts = **−20 pts** |
-| **Gross score** | 102.0 pts |
-| **Net score** | **82.0 pts** (after penalty) |
-
-| | Player | Type | Price |
-|---|--------|------|------:|
-| ❌ OUT | **ALO** | Driver | $10.0M |
-| ❌ OUT | **GAS** | Driver | $12.0M |
-| ❌ OUT | **Aston Martin** | Constructor | $10.3M |
-| ❌ OUT | **Cadillac** | Constructor | $6.0M |
-| ✅ IN | **LEC** | Driver | $22.8M |
-| ✅ IN | **PIA** | Driver | $25.5M |
-| ✅ IN | **Ferrari** | Constructor | $23.3M |
-| ✅ IN | **Haas F1 Team** | Constructor | $7.4M |
-
-> ⚠️ This plan uses **2 excess transfers** (−20 pts penalty) because the points gain outweighs the cost.
-
-### 📊 Unconstrained Optimum (target team)
-
-The best possible team (with unlimited free transfers) scores **107.9 pts** and requires **7 total transfers** from your current team — that's **5.8 gross pts** more than the recommended team.
-
-| Driver / Constructor | In Your Team? |
-|----------------------|:-------------:|
-| VER | 🆕 |
-| LEC | 🆕 |
-| HUL | 🆕 |
-| COL | 🆕 |
-| BOR | 🆕 |
-| Ferrari | 🆕 |
-| Audi | 🆕 |
-
-_Plan towards this team over the coming weeks._
-
-## ⚡ Recommended Team (after transfers)
+## ⚡ Optimal Fantasy Team
 
 ### Drivers
 
 | Driver | Constructor | Price | Predicted Pts | PPM | Turbo |
 |--------|-------------|------:|-------------:|----:|:-----:|
-| **LEC** | Ferrari | $22.8M | 19.7 | 0.86 | ⚡ YES |
-| **PIA** | McLaren | $25.5M | 17.6 | 0.69 |  |
-| **OCO** | Haas F1 Team | $7.3M | 5.4 | 0.73 |  |
-| **BEA** | Haas F1 Team | $7.4M | 2.1 | 0.28 |  |
-| **LIN** | Racing Bulls | $6.2M | -0.0 | -0.01 |  |
+| **VER** | Red Bull Racing | $27.7M | 20.3 | 0.73 | ⚡ YES |
+| **LEC** | Ferrari | $22.8M | 19.7 | 0.86 |  |
+| **HUL** | Audi | $6.8M | 4.0 | 0.59 |  |
+| **COL** | Alpine | $6.2M | 3.4 | 0.55 |  |
+| **BOR** | Audi | $6.4M | 2.9 | 0.46 |  |
 
 ### Constructors
 
 | Constructor | Price | Predicted Pts | PPM |
 |-------------|------:|-------------:|----:|
 | **Ferrari** | $23.3M | 30.2 | 1.3 |
-| **Haas F1 Team** | $7.4M | 7.4 | 1.0 |
+| **Audi** | $6.6M | 7.0 | 1.06 |
 
 ### 💰 Summary
 
 | Metric | Value |
 |--------|------:|
-| **Turbo Driver** | ⚡ LEC (points doubled) |
-| **Total Cost** | $99.9M |
-| **Budget Remaining** | $0.1M |
-| **Gross Score** | 102.0 pts |
-| **Transfer Penalty** | −20 pts |
-| **Net Score** | **82.0 pts** |
+| **Turbo Driver** | ⚡ VER (points doubled) |
+| **Total Cost** | $99.8M |
+| **Budget Remaining** | $0.2M |
+| **Predicted Score** | 107.9 pts |
 
 ## 🎯 Turbo Driver Rationale
 
-**LEC** was selected as the turbo driver (points doubled).
+**VER** was selected as the turbo driver (points doubled).
 
-- **Predicted base points:** 19.7
-- **With turbo bonus:** 39.4 (effectively)
-- **Prediction rank:** #2 overall
-- **Rolling avg fantasy pts:** 3.7
-- **Circuit history avg pts:** 7.5
+- **Predicted base points:** 20.3
+- **With turbo bonus:** 40.6 (effectively)
+- **Prediction rank:** #1 overall
+- **Rolling avg fantasy pts:** 16.7
+- **Circuit history avg pts:** 36.5
 
 > 💡 The turbo driver is chosen by the optimiser to maximise total team score. The highest-predicted driver in the team gets turbo since doubling a larger number yields the biggest gain.
 
@@ -170,16 +129,16 @@ _This adjustment is strongest at Round 1 and fades to zero by Round 6 as real ra
 
 | Driver | Constructor | Price | Predicted Pts | PPM |
 |--------|-------------|------:|-------------:|----:|
-| VER | Red Bull Racing | $27.7M | 20.3 | 0.73 |
-| HUL | Audi | $6.8M | 4.0 | 0.59 |
+| OCO | Haas F1 Team | $7.3M | 5.4 | 0.73 |
+| PIA | McLaren | $25.5M | 17.6 | 0.69 |
 | NOR | McLaren | $27.2M | 15.8 | 0.58 |
-| COL | Alpine | $6.2M | 3.4 | 0.55 |
 | RUS | Mercedes | $27.4M | 13.0 | 0.47 |
+| HAM | Ferrari | $22.5M | 10.6 | 0.47 |
 
 _PPM = Predicted Points per $M — useful for budget-constrained swaps._
 
 ---
 
-_Generated automatically by [F1 Fantasy Predictor](https://github.com) on 2026-03-09 18:52 UTC_
+_Generated automatically by [F1 Fantasy Predictor](https://github.com) on 2026-03-09 20:50 UTC_
 
 _Model: LightGBM · Optimiser: PuLP ILP · Data: FastF1 + Open-Meteo_
