@@ -12,19 +12,17 @@
 
 | | |
 |---|---|
-| **Transfers** | 2 |
-| **Free** | 2 of 2 |
+| **Transfers** | 1 |
+| **Free** | 1 of 2 |
 
 | | Player | Type | Price |
 |---|--------|------|------:|
-| ❌ OUT | **COL** | Driver | $6.2M |
 | ❌ OUT | **Haas F1 Team** | Constructor | $7.4M |
-| ✅ IN | **LIN** | Driver | $6.2M |
 | ✅ IN | **Audi** | Constructor | $6.6M |
 
 ### 📊 Unconstrained Optimum (target team)
 
-The best possible team (with unlimited free transfers) scores **95.4 pts** and requires **5 total transfers** from your current team — that's **5.0 gross pts** more than the recommended team.
+The best possible team (with unlimited free transfers) scores **95.4 pts** and requires **4 total transfers** from your current team — that's **5.0 gross pts** more than the recommended team.
 
 | Driver / Constructor | In Your Team? |
 |----------------------|:-------------:|
@@ -32,7 +30,7 @@ The best possible team (with unlimited free transfers) scores **95.4 pts** and r
 | HUL | ✅ |
 | HAD | 🆕 |
 | OCO | ✅ |
-| LIN | 🆕 |
+| LIN | ✅ |
 | McLaren | 🆕 |
 | Audi | 🆕 |
 
@@ -171,6 +169,6 @@ _PPM = Predicted Points per $M — useful for budget-constrained swaps._
 
 ---
 
-_Generated automatically by [F1 Fantasy Predictor](https://github.com) on 2026-03-30 10:29 UTC_
+_Generated automatically by [F1 Fantasy Predictor](https://github.com) on 2026-03-30 10:45 UTC_
 
 _Model: LightGBM · Optimiser: PuLP ILP · Data: FastF1 + Open-Meteo_
