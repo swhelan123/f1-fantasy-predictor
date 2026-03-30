@@ -12,29 +12,17 @@
 
 | | |
 |---|---|
-| **Transfers** | 1 |
-| **Free** | 1 of 2 |
+| **Transfers** | 2 |
+| **Free** | 2 of 2 |
 
 | | Player | Type | Price |
 |---|--------|------|------:|
-| ❌ OUT | **Haas F1 Team** | Constructor | $7.4M |
-| ✅ IN | **Audi** | Constructor | $6.6M |
+| ❌ OUT | **LIA** | Driver | $0.0M |
+| ❌ OUT | **PIA** | Driver | $25.5M |
+| ✅ IN | **HAD** | Driver | $15.1M |
+| ✅ IN | **VER** | Driver | $27.7M |
 
-### 📊 Unconstrained Optimum (target team)
-
-The best possible team (with unlimited free transfers) scores **95.4 pts** and requires **4 total transfers** from your current team — that's **5.0 gross pts** more than the recommended team.
-
-| Driver / Constructor | In Your Team? |
-|----------------------|:-------------:|
-| VER | 🆕 |
-| HUL | ✅ |
-| HAD | 🆕 |
-| OCO | ✅ |
-| LIN | ✅ |
-| McLaren | 🆕 |
-| Audi | 🆕 |
-
-_Plan towards this team over the coming weeks._
+> 🎯 Your recommended team **is** the overall optimum — no points left on the table!
 
 ## ⚡ Recommended Team (after transfers)
 
@@ -42,9 +30,9 @@ _Plan towards this team over the coming weeks._
 
 | Driver | Constructor | Price | Predicted Pts | PPM | Turbo |
 |--------|-------------|------:|-------------:|----:|:-----:|
-| **PIA** | McLaren | $25.5M | 18.8 | 0.74 | ⚡ YES |
-| **LEC** | Ferrari | $22.8M | 16.4 | 0.72 |  |
+| **VER** | Red Bull Racing | $27.7M | 21.6 | 0.78 | ⚡ YES |
 | **HUL** | Audi | $6.8M | 4.7 | 0.69 |  |
+| **HAD** | Red Bull Racing | $15.1M | 4.3 | 0.28 |  |
 | **OCO** | Haas F1 Team | $7.3M | 2.9 | 0.4 |  |
 | **LIN** | Racing Bulls | $6.2M | 0.9 | 0.14 |  |
 
@@ -52,27 +40,27 @@ _Plan towards this team over the coming weeks._
 
 | Constructor | Price | Predicted Pts | PPM |
 |-------------|------:|-------------:|----:|
-| **Ferrari** | $23.3M | 24.9 | 1.07 |
+| **McLaren** | $28.9M | 36.5 | 1.26 |
 | **Audi** | $6.6M | 2.9 | 0.45 |
 
 ### 💰 Summary
 
 | Metric | Value |
 |--------|------:|
-| **Turbo Driver** | ⚡ PIA (points doubled) |
-| **Total Cost** | $98.5M |
-| **Budget Remaining** | $1.5M |
-| **Predicted Score** | 90.4 pts |
+| **Turbo Driver** | ⚡ VER (points doubled) |
+| **Total Cost** | $98.6M |
+| **Budget Remaining** | $1.4M |
+| **Predicted Score** | 95.4 pts |
 
 ## 🎯 Turbo Driver Rationale
 
-**PIA** was selected as the turbo driver (points doubled).
+**VER** was selected as the turbo driver (points doubled).
 
-- **Predicted base points:** 18.8
-- **With turbo bonus:** 37.6 (effectively)
-- **Prediction rank:** #2 overall
-- **Rolling avg fantasy pts:** 7.0
-- **Circuit history avg pts:** 42.0
+- **Predicted base points:** 21.6
+- **With turbo bonus:** 43.2 (effectively)
+- **Prediction rank:** #1 overall
+- **Rolling avg fantasy pts:** 27.5
+- **Circuit history avg pts:** 6.0
 
 > 💡 The turbo driver is chosen by the optimiser to maximise total team score. The highest-predicted driver in the team gets turbo since doubling a larger number yields the biggest gain.
 
@@ -159,16 +147,16 @@ _This adjustment is strongest at Round 1 and fades to zero by Round 6 as real ra
 
 | Driver | Constructor | Price | Predicted Pts | PPM |
 |--------|-------------|------:|-------------:|----:|
-| VER | Red Bull Racing | $27.7M | 21.6 | 0.78 |
+| PIA | McLaren | $25.5M | 18.8 | 0.74 |
+| LEC | Ferrari | $22.8M | 16.4 | 0.72 |
 | NOR | McLaren | $27.2M | 17.7 | 0.65 |
 | RUS | Mercedes | $27.4M | 15.5 | 0.57 |
 | HAM | Ferrari | $22.5M | 8.5 | 0.38 |
-| HAD | Red Bull Racing | $15.1M | 4.3 | 0.28 |
 
 _PPM = Predicted Points per $M — useful for budget-constrained swaps._
 
 ---
 
-_Generated automatically by [F1 Fantasy Predictor](https://github.com) on 2026-03-30 10:45 UTC_
+_Generated automatically by [F1 Fantasy Predictor](https://github.com) on 2026-03-30 10:52 UTC_
 
 _Model: LightGBM · Optimiser: PuLP ILP · Data: FastF1 + Open-Meteo_
